@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_dji_devoluciones" model="ir.ui.view">
+        <field name="name">sale.order.form.dji.devoluciones</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Ocultar "Confirmar" en los presupuestos de devolución (además está bloqueado en Python) -->
+            <xpath expr="//header/button[@name='action_confirm'][@id='action_confirm']" position="attributes">
+                <attribute name="invisible">state != 'sent' or dev_es_devolucion</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_confirm'][not(@id)]" position="attributes">
+                <attribute name="invisible">state != 'draft' or dev_es_devolucion</attribute>
+            </xpath>
+
+            <xpath expr="//header" position="inside">
+                <button name="action_dev_calcular" type="object" string="Calcular devolución"
+                        class="btn-primary"
+                        invisible="not dev_es_devolucion or dev_estado == 'ejecutada' or state not in ('draft', 'sent')"/>
+                <button name="action_dev_ejecutar" type="object" string="Ejecutar devolución"
+                        class="btn-primary" groups="stock.group_stock_user"
+                        invisible="not dev_es_devolucion or dev_estado != 'propuesta' or state not in ('draft', 'sent')"
+                        confirm="Se crearán y VALIDARÁN las devoluciones de albarán (entra el stock) y se generarán las facturas rectificativas en borrador. ¿Continuar?"/>
+            </xpath>
+
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_dev_ver_albaranes" type="object" class="oe_stat_button" icon="fa-truck"
+                        invisible="dev_picking_count == 0">
+                    <field name="dev_picking_count" widget="statinfo" string="Devoluciones"/>
+                </button>
+                <button name="action_dev_ver_rectificativas" type="object" class="oe_stat_button" icon="fa-file-text-o"
+                        invisible="dev_factura_count == 0">
+                    <field name="dev_factura_count" widget="statinfo" string="Rectificativas"/>
+                </button>
+            </xpath>
+
+            <xpath expr="//group[@name='order_details']" position="inside">
+                <field name="dev_es_devolucion" invisible="1"/>
+                <field name="dev_fecha_desde" invisible="not dev_es_devolucion"
+                       readonly="dev_estado == 'ejecutada'"/>
+                <field name="dev_estado" invisible="not dev_es_devolucion" readonly="1" widget="badge"
+                       decoration-info="dev_estado == 'propuesta'" decoration-success="dev_estado == 'ejecutada'"/>
+            </xpath>
+
+            <xpath expr="//notebook/page[1]" position="before">
+                <page string="Propuesta de devolución" name="dji_devolucion"
+                      invisible="not dev_es_devolucion or dev_estado == 'borrador'">
+                    <group>
+                        <group>
+                            <field name="dev_ventas_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="dev_total_propuesta" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="dev_propuesta_ids" readonly="dev_estado != 'propuesta'">
+                        <list editable="bottom" create="0">
+                            <field name="sale_order_id" readonly="1"/>
+                            <field name="fecha_venta" readonly="1" optional="show"/>
+                            <field name="picking_id" readonly="1"/>
+                            <field name="product_id" readonly="1" force_save="1"/>
+                            <field name="cantidad"/>
+                            <field name="uom_id" readonly="1" force_save="1"/>
+                            <field name="price_unit" readonly="1"/>
+                            <field name="discount" readonly="1" optional="hide"/>
+                            <field name="subtotal" sum="Total"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="move_id" column_invisible="1" force_save="1"/>
+                            <field name="sale_line_id" column_invisible="1" force_save="1"/>
+                        </list>
+                    </field>
+                    <separator string="No asignado (revisar manualmente)" invisible="not dev_faltante_ids"/>
+                    <field name="dev_faltante_ids" readonly="1" invisible="not dev_faltante_ids">
+                        <list decoration-warning="1">
+                            <field name="product_id"/>
+                            <field name="cantidad"/>
+                            <field name="uom_id"/>
+                            <field name="motivo"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
