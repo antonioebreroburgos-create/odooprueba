@@ -39,6 +39,7 @@
                 <field name="dev_es_devolucion" invisible="1"/>
                 <field name="dev_fecha_desde" invisible="not dev_es_devolucion"
                        readonly="dev_estado == 'ejecutada'"/>
+                <field name="dev_fecha_limite" invisible="not dev_es_devolucion or dev_estado == 'ejecutada'"/>
                 <field name="dev_estado" invisible="not dev_es_devolucion" readonly="1" widget="badge"
                        decoration-info="dev_estado == 'propuesta'" decoration-success="dev_estado == 'ejecutada'"/>
             </xpath>

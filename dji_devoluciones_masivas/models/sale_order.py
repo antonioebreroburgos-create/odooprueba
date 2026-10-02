@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import date, timedelta
 
 from markupsafe import Markup, escape
 
@@ -17,7 +18,14 @@ class SaleOrder(models.Model):
         help='Se activa cuando el presupuesto lleva la etiqueta DEVOLUCION.')
     dev_fecha_desde = fields.Date(
         'Buscar ventas desde', copy=False,
-        help='Solo se devolverá contra ventas con fecha igual o posterior. Vacío = todas.')
+        help='Solo se devolverá contra ventas confirmadas en esta fecha o después. '
+             'No puede ser anterior a la fecha límite (inicio del trimestre aún no liquidado en incentivos). '
+             'Vacío = fecha límite.')
+    dev_fecha_limite = fields.Date(
+        'Fecha límite', compute='_compute_dev_fecha_limite',
+        help='Inicio del trimestre más antiguo que aún no está liquidado en incentivos: '
+             'trimestre de (hoy - días de liquidación). Días configurables en el parámetro de sistema '
+             'dji_devoluciones_masivas.dias_liquidacion (por defecto 45).')
     dev_estado = fields.Selection([
         ('borrador', 'Borrador'),
         ('propuesta', 'Propuesta calculada'),
@@ -53,6 +61,30 @@ class SaleOrder(models.Model):
             order.dev_ventas_count = len(order.dev_propuesta_ids.sale_order_id)
             order.dev_total_propuesta = sum(order.dev_propuesta_ids.mapped('subtotal'))
 
+    @api.model
+    def _dev_get_fecha_limite(self):
+        dias = int(self.env['ir.config_parameter'].sudo().get_param(
+            'dji_devoluciones_masivas.dias_liquidacion', 45))
+        ref = fields.Date.context_today(self) - timedelta(days=dias)
+        return date(ref.year, 3 * ((ref.month - 1) // 3) + 1, 1)
+
+    def _compute_dev_fecha_limite(self):
+        limite = self._dev_get_fecha_limite()
+        for order in self:
+            order.dev_fecha_limite = limite
+
+    def _dev_aplicar_fecha_limite(self):
+        """Garantiza que la búsqueda no vaya más atrás de la fecha límite."""
+        limite = self._dev_get_fecha_limite()
+        if not self.dev_fecha_desde:
+            self.with_context(dev_no_invalidar=True).dev_fecha_desde = limite
+        elif self.dev_fecha_desde < limite:
+            raise UserError(_(
+                "La fecha 'Buscar ventas desde' (%(desde)s) es anterior a la fecha límite (%(limite)s).\n"
+                "No se puede devolver contra ventas de trimestres ya liquidados en incentivos.",
+                desde=self.dev_fecha_desde.strftime('%d/%m/%Y'), limite=limite.strftime('%d/%m/%Y')))
+        return limite
+
     # ------------------------------------------------------------------
     # Protecciones
     # ------------------------------------------------------------------
@@ -69,7 +101,7 @@ class SaleOrder(models.Model):
         # Si cambian los datos de entrada con una propuesta ya calculada, la propuesta deja de ser válida
         campos_entrada = {'order_line', 'partner_id', 'dev_fecha_desde'}
         invalidar = self.env['sale.order']
-        if campos_entrada & set(vals):
+        if campos_entrada & set(vals) and not self.env.context.get('dev_no_invalidar'):
             invalidar = self.filtered(lambda o: o.dev_estado == 'propuesta')
         if self.filtered(lambda o: o.dev_estado == 'ejecutada') and campos_entrada & set(vals):
             raise UserError(_("Esta devolución ya está ejecutada y no se puede modificar."))
@@ -96,6 +128,7 @@ class SaleOrder(models.Model):
         self._dev_check(('borrador', 'propuesta'))
         self.dev_propuesta_ids.unlink()
         self.dev_faltante_ids.unlink()
+        self._dev_aplicar_fecha_limite()
 
         solicitado, faltantes = self._dev_cantidades_solicitadas()
         if not solicitado and not faltantes:
@@ -169,8 +202,8 @@ class SaleOrder(models.Model):
             ('qty_delivered', '>', 0),
             ('qty_invoiced', '>', 0),
         ]
-        if self.dev_fecha_desde:
-            domain.append(('order_id.date_order', '>=', fields.Datetime.to_datetime(self.dev_fecha_desde)))
+        desde = max(self.dev_fecha_desde or date.min, self._dev_get_fecha_limite())
+        domain.append(('order_id.date_order', '>=', fields.Datetime.to_datetime(desde)))
         lineas = self.env['sale.order.line'].search(domain)
 
         # Cantidades ya comprometidas en otras devoluciones masivas calculadas pero no ejecutadas
@@ -306,6 +339,13 @@ class SaleOrder(models.Model):
         lineas = self.dev_propuesta_ids.filtered(lambda l: l.uom_id.compare(l.cantidad, 0) > 0)
         if not lineas:
             raise UserError(_("La propuesta no tiene ninguna cantidad a devolver."))
+        limite = self._dev_get_fecha_limite()
+        antiguas = lineas.sale_order_id.filtered(lambda so: so.date_order.date() < limite)
+        if antiguas:
+            raise UserError(_(
+                "Las ventas %(ventas)s son anteriores a la fecha límite (%(limite)s): ese trimestre ya está "
+                "liquidado en incentivos. Vuelve a calcular la propuesta.",
+                ventas=', '.join(antiguas.mapped('name')), limite=limite.strftime('%d/%m/%Y')))
         self._dev_revalidar(lineas)
 
         # a) Devoluciones de albarán (una por albarán original)
@@ -421,40 +461,45 @@ class SaleOrder(models.Model):
         return devolucion
 
     def _dev_crear_rectificativas(self, lineas):
-        """Una rectificativa por factura original (y dirección de facturación), con las líneas
-        enlazadas a su línea de venta para que Odoo descuente lo facturado."""
+        """Una sola rectificativa por devolución (salvo que las ventas tengan distinta dirección de
+        facturación, posición fiscal, moneda o compañía, que obligan a separarlas). Cada línea va
+        enlazada a su línea de venta, así que Odoo descuenta lo facturado en cada pedido."""
         grupos = defaultdict(lambda: defaultdict(float))
-        facturas_orig = {}
+        facturas = defaultdict(lambda: self.env['account.move'])
         for l in lineas:
             sl = l.sale_line_id
+            so = sl.order_id
             qty = l.uom_id._compute_quantity(l.cantidad, sl.product_uom_id)
-            factura = sl.invoice_lines.move_id.filtered(
-                lambda m: m.move_type == 'out_invoice' and m.state == 'posted'
-            ).sorted(lambda m: (m.invoice_date or fields.Date.today(), m.id), reverse=True)[:1]
-            clave = (factura.id or 0, sl.order_id.partner_invoice_id.id)
-            facturas_orig[clave] = factura
+            clave = (so.partner_invoice_id.id, so.fiscal_position_id.id, so.currency_id.id, so.company_id.id)
             grupos[clave][sl] += qty
+            facturas[clave] |= sl.invoice_lines.move_id.filtered(
+                lambda m: m.move_type == 'out_invoice' and m.state == 'posted')
 
         Move = self.env['account.move'].with_context(default_move_type='out_refund')
         creadas = self.env['account.move']
         for clave, por_linea in grupos.items():
-            factura = facturas_orig[clave]
-            sale_lines = self.env['sale.order.line'].browse([sl.id for sl in por_linea])
+            originales = facturas[clave].sorted(lambda m: (m.invoice_date or fields.Date.today(), m.id))
+            sale_lines = self.env['sale.order.line'].browse([sl.id for sl in por_linea]).sorted(
+                lambda sl: (sl.order_id.date_order, sl.order_id.id, sl.sequence, sl.id))
             ventas = sale_lines.order_id
             vals = ventas[0]._prepare_invoice()
             vals.pop('transaction_ids', None)
-            ref = _('Devolución %(dev)s', dev=self.name)
-            if factura:
-                ref = _('%(ref)s - rectifica %(fac)s', ref=ref, fac=factura.name)
+            lineas_factura = []
+            for sl in sale_lines:
+                lv = sl._prepare_invoice_line(quantity=por_linea[sl])
+                lv['name'] = '[%s] %s' % (sl.order_id.name, lv.get('name') or sl.name)
+                lineas_factura.append(Command.create(lv))
             vals.update({
                 'move_type': 'out_refund',
-                'reversed_entry_id': factura.id or False,
+                # Con una sola factura original se enlaza; con varias se relacionan en la nota
+                'reversed_entry_id': originales.id if len(originales) == 1 else False,
                 'invoice_origin': ', '.join(ventas.mapped('name')),
-                'ref': ref,
-                'invoice_line_ids': [
-                    Command.create(sl._prepare_invoice_line(quantity=qty))
-                    for sl, qty in por_linea.items()
-                ],
+                'ref': _('Devolución %(dev)s', dev=self.name),
+                'narration': Markup('<p>%s</p><p>%s</p>') % (
+                    _('Rectifica las facturas: %s', ', '.join(originales.mapped('name')) or '-'),
+                    _('Ventas de origen: %s', ', '.join(ventas.mapped('name'))),
+                ),
+                'invoice_line_ids': lineas_factura,
             })
             creadas |= Move.create(vals)
         return creadas
