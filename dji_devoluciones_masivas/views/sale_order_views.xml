@@ -72,13 +72,21 @@
                             <field name="sale_line_id" column_invisible="1" force_save="1"/>
                         </list>
                     </field>
-                    <separator string="No asignado (revisar manualmente)" invisible="not dev_faltante_ids"/>
-                    <field name="dev_faltante_ids" readonly="1" invisible="not dev_faltante_ids">
-                        <list decoration-warning="1">
-                            <field name="product_id"/>
-                            <field name="cantidad"/>
-                            <field name="uom_id"/>
-                            <field name="motivo"/>
+                    <separator string="No asignado: marca 'Abonar igualmente' para incluirlo sin venta de origen" invisible="not dev_faltante_ids"/>
+                    <field name="dev_faltante_ids" invisible="not dev_faltante_ids" readonly="dev_estado != 'propuesta'">
+                        <list editable="bottom" create="0" delete="0" decoration-warning="not incluir">
+                            <field name="product_id" readonly="1" force_save="1"/>
+                            <field name="cantidad" readonly="1" force_save="1"/>
+                            <field name="uom_id" readonly="1" force_save="1"/>
+                            <field name="motivo" readonly="1"/>
+                            <field name="incluir" widget="boolean_toggle"/>
+                            <field name="tracking" column_invisible="1"/>
+                            <field name="lot_id" invisible="not incluir or tracking == 'none'"
+                                   required="incluir and tracking != 'none'"
+                                   context="{'default_product_id': product_id}"/>
+                            <field name="price_unit" invisible="not incluir"/>
+                            <field name="subtotal" invisible="not incluir" sum="Total"/>
+                            <field name="currency_id" column_invisible="1"/>
                         </list>
                     </field>
                 </page>

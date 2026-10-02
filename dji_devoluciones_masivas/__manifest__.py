@@ -1,6 +1,6 @@
 {
     'name': 'DJI - Devoluciones masivas',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.4.0',
     'summary': 'Devoluciones masivas de clientes (hoteles) repartidas automáticamente contra las ventas originales',
     'description': """
 Presupuesto con etiqueta DEVOLUCION como documento de entrada:

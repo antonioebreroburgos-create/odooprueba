@@ -160,8 +160,10 @@ class SaleOrder(models.Model):
                     'product_id': product.id,
                     'cantidad': qty_base,
                     'uom_id': product.uom_id.id,
-                    'motivo': _('No hay ventas entregadas y facturadas suficientes para este cliente en el periodo'),
+                    'motivo': self._dev_motivo_faltante(product, solicitado[product], qty_base),
                 })
+        for v in faltantes:
+            v.setdefault('price_unit', self._dev_precio_sugerido(self.env['product.product'].browse(v['product_id'])))
         self.env['dji.devolucion.faltante'].create([dict(v, devolucion_id=self.id) for v in faltantes])
 
         self.dev_estado = 'propuesta'
@@ -332,21 +334,99 @@ class SaleOrder(models.Model):
         return asignaciones, pendiente
 
     # ------------------------------------------------------------------
+    # Diagnóstico de lo no asignado
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _dev_fmt(qty):
+        return ('%.3f' % qty).rstrip('0').rstrip('.')
+
+    def _dev_motivo_faltante(self, product, solicitado_base, pendiente_base):
+        """Explica por qué no se ha podido asignar una cantidad."""
+        uom = product.uom_id
+        desde = max(self.dev_fecha_desde or date.min, self._dev_get_fecha_limite())
+        lineas = self.env['sale.order.line'].search([
+            ('order_id.partner_id', 'child_of', self.partner_id.commercial_partner_id.id),
+            ('order_id.state', '=', 'sale'),
+            ('order_id', '!=', self.id),
+            ('product_id', '=', product.id),
+        ]).filtered(lambda l: not l.order_id.dev_es_devolucion)
+        motivos = []
+        asignado = solicitado_base - pendiente_base
+        if uom.compare(asignado, 0) > 0:
+            motivos.append(_('Asignadas %(a)s de %(s)s.', a=self._dev_fmt(asignado), s=self._dev_fmt(solicitado_base)))
+        if not lineas:
+            motivos.append(_('No consta ninguna venta de este producto a este cliente.'))
+            return ' '.join(motivos)
+
+        antes = lineas.filtered(lambda l: l.order_id.date_order.date() < desde)
+        periodo = lineas - antes
+
+        def neto(l):
+            return l.product_uom_id._compute_quantity(min(l.qty_delivered, l.qty_invoiced), uom)
+
+        antes_netas = antes.filtered(lambda l: uom.compare(neto(l), 0) > 0).sorted(
+            lambda l: l.order_id.date_order, reverse=True)
+        if antes_netas:
+            refs = ', '.join('%s (%s)' % (l.order_id.name, l.order_id.date_order.strftime('%d/%m/%Y'))
+                             for l in antes_netas[:3])
+            if len(antes_netas) > 3:
+                refs += _(' y %s más', len(antes_netas) - 3)
+            motivos.append(_('%(q)s vendidas antes de la fecha límite %(f)s (trimestre liquidado): %(refs)s.',
+                             q=self._dev_fmt(sum(neto(l) for l in antes_netas)),
+                             f=desde.strftime('%d/%m/%Y'), refs=refs))
+        sin_facturar = periodo.filtered(lambda l: l.product_uom_id.compare(l.qty_delivered, l.qty_invoiced) > 0)
+        if sin_facturar:
+            motivos.append(_('Entregado pero sin facturar en: %s.', ', '.join(sin_facturar.order_id.mapped('name'))))
+        sin_entregar = periodo.filtered(lambda l: l.product_uom_id.compare(l.qty_delivered, 0) <= 0)
+        if sin_entregar:
+            motivos.append(_('Sin entregar en: %s.', ', '.join(sin_entregar.order_id.mapped('name'))))
+        devueltas = periodo.filtered(lambda l: any(m.returned_move_ids.filtered(lambda r: r.state != 'cancel')
+                                                  for m in l.move_ids))
+        if devueltas:
+            motivos.append(_('Ya tienen devoluciones: %s.', ', '.join(devueltas.order_id.mapped('name'))))
+        if product.tracking != 'none':
+            sin_lote = periodo.filtered(lambda l: any(
+                m.state == 'done' and not m.move_line_ids.lot_id for m in self._dev_moves_salida(l)))
+            if sin_lote:
+                motivos.append(_('Albaranes sin lote registrado en: %s.', ', '.join(sin_lote.order_id.mapped('name'))))
+        if len(motivos) <= 1:
+            motivos.append(_('No quedan más ventas entregadas y facturadas en el periodo.'))
+        return ' '.join(motivos)
+
+    def _dev_precio_sugerido(self, product):
+        """Último precio neto (unidad base) vendido a este cliente; si no hay, precio de tarifa."""
+        sl = self.env['sale.order.line'].search([
+            ('order_id.partner_id', 'child_of', self.partner_id.commercial_partner_id.id),
+            ('order_id.state', '=', 'sale'),
+            ('order_id', '!=', self.id),
+            ('product_id', '=', product.id),
+        ], order='id desc', limit=1)
+        if sl:
+            neto = sl.price_unit * (1 - (sl.discount or 0.0) / 100.0)
+            qty_base = sl.product_uom_id._compute_quantity(1.0, product.uom_id)
+            return neto / qty_base if qty_base else neto
+        return product.lst_price
+
+    # ------------------------------------------------------------------
     # 2) EJECUTAR
     # ------------------------------------------------------------------
     def action_dev_ejecutar(self):
         self._dev_check(('propuesta',))
         lineas = self.dev_propuesta_ids.filtered(lambda l: l.uom_id.compare(l.cantidad, 0) > 0)
-        if not lineas:
-            raise UserError(_("La propuesta no tiene ninguna cantidad a devolver."))
-        limite = self._dev_get_fecha_limite()
-        antiguas = lineas.sale_order_id.filtered(lambda so: so.date_order.date() < limite)
-        if antiguas:
-            raise UserError(_(
-                "Las ventas %(ventas)s son anteriores a la fecha límite (%(limite)s): ese trimestre ya está "
-                "liquidado en incentivos. Vuelve a calcular la propuesta.",
-                ventas=', '.join(antiguas.mapped('name')), limite=limite.strftime('%d/%m/%Y')))
-        self._dev_revalidar(lineas)
+        extras = self.dev_faltante_ids.filtered(lambda f: f.incluir and f.uom_id.compare(f.cantidad, 0) > 0)
+        if not lineas and not extras:
+            raise UserError(_("No hay nada que devolver: la propuesta está vacía y no se ha marcado "
+                              "'Abonar igualmente' en ninguna línea no asignada."))
+        if lineas:
+            limite = self._dev_get_fecha_limite()
+            antiguas = lineas.sale_order_id.filtered(lambda so: so.date_order.date() < limite)
+            if antiguas:
+                raise UserError(_(
+                    "Las ventas %(ventas)s son anteriores a la fecha límite (%(limite)s): ese trimestre ya está "
+                    "liquidado en incentivos. Vuelve a calcular la propuesta.",
+                    ventas=', '.join(antiguas.mapped('name')), limite=limite.strftime('%d/%m/%Y')))
+            self._dev_revalidar(lineas)
+        self._dev_validar_extras(extras)
 
         # a) Devoluciones de albarán (una por albarán original)
         por_picking = defaultdict(lambda: self.env['dji.devolucion.propuesta'])
@@ -355,23 +435,101 @@ class SaleOrder(models.Model):
         devoluciones = self.env['stock.picking']
         for picking, pls in por_picking.items():
             devoluciones |= self._dev_devolver_albaran(picking, pls)
+        # b) Entrada de stock de lo no asignado que se abona igualmente
+        devoluciones |= self._dev_recepcion_sin_venta(extras)
 
-        # b) Rectificativas (borrador) enlazadas a las líneas de venta
-        rectificativas = self._dev_crear_rectificativas(lineas)
+        # c) Rectificativa(s) en borrador
+        rectificativas = self._dev_crear_rectificativas(lineas, extras)
 
         self.write({
             'dev_estado': 'ejecutada',
             'dev_picking_ids': [Command.set(devoluciones.ids)],
             'dev_factura_ids': [Command.set(rectificativas.ids)],
         })
-        cuerpo = Markup('<p>%s</p><ul>%s</ul><p>%s</p>') % (
-            _('Devolución ejecutada contra %s ventas.', len(lineas.sale_order_id)),
-            Markup('').join(Markup('<li>%s</li>') % escape(n) for n in lineas.sale_order_id.mapped('name')),
-            _('%(albaranes)s albaranes de devolución validados y %(facturas)s rectificativas en borrador.',
-              albaranes=len(devoluciones), facturas=len(rectificativas)),
-        )
+        partes = [_('Devolución ejecutada contra %s ventas.', len(lineas.sale_order_id))]
+        if extras:
+            partes.append(_('%s líneas abonadas sin venta de origen (no restan en incentivos).', len(extras)))
+        partes.append(_('%(albaranes)s albaranes de devolución/entrada validados y %(facturas)s rectificativas en borrador.',
+                        albaranes=len(devoluciones), facturas=len(rectificativas)))
+        cuerpo = Markup('').join(Markup('<p>%s</p>') % p for p in partes)
+        if lineas:
+            cuerpo += Markup('<ul>%s</ul>') % Markup('').join(
+                Markup('<li>%s</li>') % escape(n) for n in lineas.sale_order_id.mapped('name'))
         self.message_post(body=cuerpo)
         return True
+
+    def _dev_validar_extras(self, extras):
+        errores = []
+        for f in extras:
+            if f.product_id.is_storable and f.product_id.tracking != 'none' and not f.lot_id:
+                errores.append(_('%s: indica el lote que devuelve el cliente.', f.product_id.display_name))
+            if f.lot_id and f.lot_id.product_id != f.product_id:
+                errores.append(_('%s: el lote %s no es de este producto.', f.product_id.display_name, f.lot_id.name))
+            if f.price_unit < 0:
+                errores.append(_('%s: el precio de abono no puede ser negativo.', f.product_id.display_name))
+        if errores:
+            raise UserError(_("Revisa las líneas no asignadas marcadas para abonar:\n- %s", '\n- '.join(errores)))
+
+    def _dev_recepcion_sin_venta(self, extras):
+        """Entrada de stock desde el cliente para lo abonado sin venta de origen."""
+        almacenables = extras.filtered(lambda f: f.product_id.is_storable)
+        if not almacenables:
+            return self.env['stock.picking']
+        wh = self.warehouse_id or self.env['stock.warehouse'].search([('company_id', '=', self.company_id.id)], limit=1)
+        ptype = wh.out_type_id.return_picking_type_id or wh.in_type_id
+        loc_src = self.partner_id.property_stock_customer or self.env.ref('stock.stock_location_customers')
+        loc_dest = ptype.default_location_dest_id or wh.lot_stock_id
+        picking = self.env['stock.picking'].create({
+            'picking_type_id': ptype.id,
+            'partner_id': (self.partner_shipping_id or self.partner_id).id,
+            'location_id': loc_src.id,
+            'location_dest_id': loc_dest.id,
+            'origin': _('%s (sin venta de origen)', self.name),
+            'company_id': self.company_id.id,
+        })
+        pares = []
+        for f in almacenables:
+            move = self.env['stock.move'].create({
+                'picking_id': picking.id,
+                'product_id': f.product_id.id,
+                'product_uom_qty': f.cantidad,
+                'product_uom': f.uom_id.id,
+                'location_id': loc_src.id,
+                'location_dest_id': loc_dest.id,
+                'picking_type_id': ptype.id,
+                'company_id': self.company_id.id,
+            })
+            pares.append((move, f))
+        picking.action_confirm()
+        for move, f in pares:
+            if f.lot_id:
+                move._do_unreserve()
+                move.move_line_ids.unlink()
+                self.env['stock.move.line'].create({
+                    'move_id': move.id,
+                    'picking_id': picking.id,
+                    'product_id': move.product_id.id,
+                    'product_uom_id': move.product_uom.id,
+                    'lot_id': f.lot_id.id,
+                    'quantity': move.product_uom_qty,
+                    'location_id': move.location_id.id,
+                    'location_dest_id': move.location_dest_id.id,
+                    'company_id': move.company_id.id,
+                })
+            else:
+                move.quantity = move.product_uom_qty
+            move.picked = True
+        self._dev_validar_albaran(picking, _('la entrada sin venta de origen'))
+        return picking
+
+    def _dev_validar_albaran(self, picking, descripcion):
+        picking.with_context(
+            skip_backorder=True, picking_ids_not_to_backorder=picking.ids, skip_sms=True,
+        ).button_validate()
+        if picking.state != 'done':
+            raise UserError(_("No se ha podido validar automáticamente %(desc)s (%(alb)s).",
+                              desc=descripcion, alb=picking.name))
+        picking.message_post(body=_('Generado desde la devolución masiva %s.', self.name))
 
     def _dev_revalidar(self, lineas):
         """Vuelve a comprobar las cantidades justo antes de ejecutar (pueden haber cambiado o editado a mano)."""
@@ -450,20 +608,15 @@ class SaleOrder(models.Model):
                         'company_id': move.company_id.id,
                     })
             move.picked = True
-        devolucion.with_context(
-            skip_backorder=True, picking_ids_not_to_backorder=devolucion.ids, skip_sms=True,
-        ).button_validate()
-        if devolucion.state != 'done':
-            raise UserError(_(
-                "No se ha podido validar automáticamente la devolución %(dev)s del albarán %(alb)s.",
-                dev=devolucion.name, alb=picking.name))
-        devolucion.message_post(body=_('Devolución generada desde la devolución masiva %s.', self.name))
+        self._dev_validar_albaran(devolucion, _('la devolución del albarán %s', picking.name))
         return devolucion
 
-    def _dev_crear_rectificativas(self, lineas):
+    def _dev_crear_rectificativas(self, lineas, extras=None):
         """Una sola rectificativa por devolución (salvo que las ventas tengan distinta dirección de
-        facturación, posición fiscal, moneda o compañía, que obligan a separarlas). Cada línea va
-        enlazada a su línea de venta, así que Odoo descuenta lo facturado en cada pedido."""
+        facturación, posición fiscal, moneda o compañía, que obligan a separarlas). Las líneas con venta
+        van enlazadas a su línea de venta (Odoo descuenta lo facturado y el dashboard lo resta); las
+        abonadas sin venta de origen van sin enlace."""
+        extras = extras or self.env['dji.devolucion.faltante']
         grupos = defaultdict(lambda: defaultdict(float))
         facturas = defaultdict(lambda: self.env['account.move'])
         for l in lineas:
@@ -474,6 +627,9 @@ class SaleOrder(models.Model):
             grupos[clave][sl] += qty
             facturas[clave] |= sl.invoice_lines.move_id.filtered(
                 lambda m: m.move_type == 'out_invoice' and m.state == 'posted')
+        clave_propia = (self.partner_invoice_id.id, self.fiscal_position_id.id, self.currency_id.id, self.company_id.id)
+        if extras:
+            grupos[clave_propia]  # asegura el grupo aunque no haya líneas con venta
 
         Move = self.env['account.move'].with_context(default_move_type='out_refund')
         creadas = self.env['account.move']
@@ -482,23 +638,33 @@ class SaleOrder(models.Model):
             sale_lines = self.env['sale.order.line'].browse([sl.id for sl in por_linea]).sorted(
                 lambda sl: (sl.order_id.date_order, sl.order_id.id, sl.sequence, sl.id))
             ventas = sale_lines.order_id
-            vals = ventas[0]._prepare_invoice()
+            vals = (ventas[:1] or self)._prepare_invoice()
             vals.pop('transaction_ids', None)
             lineas_factura = []
             for sl in sale_lines:
                 lv = sl._prepare_invoice_line(quantity=por_linea[sl])
                 lv['name'] = '[%s] %s' % (sl.order_id.name, lv.get('name') or sl.name)
                 lineas_factura.append(Command.create(lv))
+            extras_grupo = extras if clave == clave_propia else extras.browse()
+            for f in extras_grupo:
+                lineas_factura.append(Command.create({
+                    'product_id': f.product_id.id,
+                    'name': '[%s] %s' % (_('Sin venta'), f.product_id.display_name),
+                    'quantity': f.cantidad,
+                    'product_uom_id': f.uom_id.id,
+                    'price_unit': f.price_unit,
+                }))
+            notas = [_('Rectifica las facturas: %s', ', '.join(originales.mapped('name')) or '-'),
+                     _('Ventas de origen: %s', ', '.join(ventas.mapped('name')) or '-')]
+            if extras_grupo:
+                notas.append(_('Incluye %s líneas sin venta de origen.', len(extras_grupo)))
             vals.update({
                 'move_type': 'out_refund',
                 # Con una sola factura original se enlaza; con varias se relacionan en la nota
                 'reversed_entry_id': originales.id if len(originales) == 1 else False,
-                'invoice_origin': ', '.join(ventas.mapped('name')),
+                'invoice_origin': ', '.join(ventas.mapped('name')) or self.name,
                 'ref': _('Devolución %(dev)s', dev=self.name),
-                'narration': Markup('<p>%s</p><p>%s</p>') % (
-                    _('Rectifica las facturas: %s', ', '.join(originales.mapped('name')) or '-'),
-                    _('Ventas de origen: %s', ', '.join(ventas.mapped('name'))),
-                ),
+                'narration': Markup('').join(Markup('<p>%s</p>') % n for n in notas),
                 'invoice_line_ids': lineas_factura,
             })
             creadas |= Move.create(vals)

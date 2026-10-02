@@ -42,3 +42,16 @@ class DjiDevolucionFaltante(models.Model):
     cantidad = fields.Float('Cantidad sin asignar', digits='Product Unit', readonly=True)
     uom_id = fields.Many2one('uom.uom', string='Unidad', readonly=True)
     motivo = fields.Char('Motivo', readonly=True)
+    incluir = fields.Boolean('Abonar igualmente',
+                             help='Se abona en la rectificativa sin venta de origen y se da entrada al stock. '
+                                  'No resta en ventas/incentivos de ningún pedido.')
+    tracking = fields.Selection(related='product_id.tracking')
+    lot_id = fields.Many2one('stock.lot', string='Lote', domain="[('product_id', '=', product_id)]")
+    price_unit = fields.Float('Precio abono', digits='Product Price')
+    currency_id = fields.Many2one(related='devolucion_id.currency_id')
+    subtotal = fields.Monetary('Importe (sin imp.)', compute='_compute_subtotal', currency_field='currency_id')
+
+    @api.depends('cantidad', 'price_unit')
+    def _compute_subtotal(self):
+        for f in self:
+            f.subtotal = f.cantidad * f.price_unit
