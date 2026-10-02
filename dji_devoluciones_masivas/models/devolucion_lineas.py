@@ -13,6 +13,7 @@ class DjiDevolucionPropuesta(models.Model):
     sale_order_id = fields.Many2one(related='sale_line_id.order_id', string='Venta', store=True)
     fecha_venta = fields.Datetime(related='sale_order_id.date_order', string='Fecha venta')
     product_id = fields.Many2one('product.product', string='Producto', required=True, readonly=True)
+    lot_id = fields.Many2one('stock.lot', string='Lote', readonly=True)
     cantidad = fields.Float('Cantidad a devolver', digits='Product Unit', required=True)
     uom_id = fields.Many2one('uom.uom', string='Unidad', readonly=True)
     price_unit = fields.Float(related='sale_line_id.price_unit', string='Precio venta')

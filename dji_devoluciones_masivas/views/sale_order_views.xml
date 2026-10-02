@@ -60,6 +60,7 @@
                             <field name="fecha_venta" readonly="1" optional="show"/>
                             <field name="picking_id" readonly="1"/>
                             <field name="product_id" readonly="1" force_save="1"/>
+                            <field name="lot_id" readonly="1" force_save="1" optional="show"/>
                             <field name="cantidad"/>
                             <field name="uom_id" readonly="1" force_save="1"/>
                             <field name="price_unit" readonly="1"/>

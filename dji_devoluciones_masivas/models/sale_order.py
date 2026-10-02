@@ -104,15 +104,16 @@ class SaleOrder(models.Model):
         disponible = self._dev_disponible_por_venta(list(solicitado))
         asignaciones, pendiente = self._dev_repartir(solicitado, disponible)
 
-        # Propuesta: una línea por movimiento de albarán original (cantidad en la unidad del movimiento)
-        por_move = defaultdict(float)
-        for move, qty_base in asignaciones:
-            por_move[move] += qty_base
+        # Propuesta: una línea por movimiento de albarán original y lote (cantidad en la unidad del movimiento)
+        por_move_lote = defaultdict(float)
+        for move, lot, qty_base in asignaciones:
+            por_move_lote[(move, lot)] += qty_base
         propuesta_vals = []
-        for move, qty_base in por_move.items():
+        for (move, lot), qty_base in por_move_lote.items():
             propuesta_vals.append({
                 'devolucion_id': self.id,
                 'move_id': move.id,
+                'lot_id': lot.id or False,
                 'sale_line_id': move.sale_line_id.id,
                 'product_id': move.product_id.id,
                 'cantidad': move.product_id.uom_id._compute_quantity(qty_base, move.product_uom),
@@ -145,9 +146,6 @@ class SaleOrder(models.Model):
             if not product.is_storable:
                 faltantes.append({'product_id': product.id, 'cantidad': qty_base, 'uom_id': product.uom_id.id,
                                   'motivo': _('Producto no almacenable: no tiene albarán que devolver')})
-            elif product.tracking != 'none':
-                faltantes.append({'product_id': product.id, 'cantidad': qty_base, 'uom_id': product.uom_id.id,
-                                  'motivo': _('Producto con lote/número de serie: devolver manualmente indicando el lote')})
             else:
                 solicitado[product] += qty_base
         return solicitado, faltantes
@@ -183,7 +181,7 @@ class SaleOrder(models.Model):
             ('sale_line_id', 'in', lineas.ids),
         ])
         for o in otras:
-            reservado[o.move_id.id] += o.uom_id._compute_quantity(o.cantidad, o.move_id.product_uom)
+            reservado[(o.move_id.id, o.lot_id.id)] += o.uom_id._compute_quantity(o.cantidad, o.move_id.product_uom)
 
         for line in lineas:
             if line.order_id.dev_es_devolucion:
@@ -193,11 +191,11 @@ class SaleOrder(models.Model):
             tope_base = line.product_uom_id._compute_quantity(tope, product.uom_id)
             if product.uom_id.compare(tope_base, 0) <= 0:
                 continue
-            for move, libre_base in self._dev_libre_por_move(line, reservado):
+            for move, lot, libre_base in self._dev_libre_por_move_lote(line, reservado):
                 tomar = min(libre_base, tope_base)
                 if product.uom_id.compare(tomar, 0) <= 0:
                     break
-                resultado[line.order_id][product].append((move, tomar))
+                resultado[line.order_id][product].append((move, lot, tomar))
                 tope_base -= tomar
         return resultado
 
@@ -219,14 +217,48 @@ class SaleOrder(models.Model):
             total += r.product_uom._compute_quantity(qty, move.product_uom)
         return total
 
-    def _dev_libre_por_move(self, sale_line, reservado):
+    @api.model
+    def _dev_lotes_de_move(self, move):
+        """{lote: cantidad (unidad del move)} entregada por el movimiento de salida, según sus líneas."""
+        res = defaultdict(float)
+        for ml in move.move_line_ids:
+            if ml.lot_id:
+                res[ml.lot_id] += ml.product_uom_id._compute_quantity(ml.quantity, move.product_uom)
+        return res
+
+    @api.model
+    def _dev_devuelto_por_lote(self, move):
+        """{lote: cantidad (unidad del move)} ya devuelta (o pendiente) de un movimiento de salida."""
+        res = defaultdict(float)
+        for r in move.returned_move_ids.filtered(lambda r: r.state != 'cancel'):
+            for ml in r.move_line_ids:
+                if ml.lot_id:
+                    res[ml.lot_id] += ml.product_uom_id._compute_quantity(ml.quantity, move.product_uom)
+        return res
+
+    def _dev_libre_por_move_lote(self, sale_line, reservado):
+        """Lista de (move_salida, lote, qty_base libre). Sin lote, lote = registro vacío."""
         res = []
         product = sale_line.product_id
+        Lot = self.env['stock.lot']
         for move in self._dev_moves_salida(sale_line):
-            libre = move.quantity - self._dev_devuelto_de_move(move) - reservado.get(move.id, 0.0)
-            libre_base = move.product_uom._compute_quantity(libre, product.uom_id)
-            if product.uom_id.compare(libre_base, 0) > 0:
-                res.append((move, libre_base))
+            libre_move = move.quantity - self._dev_devuelto_de_move(move)
+            if move.product_uom.compare(libre_move, 0) <= 0:
+                continue
+            if product.tracking == 'none':
+                libre = libre_move - reservado.get((move.id, False), 0.0)
+                libre_base = move.product_uom._compute_quantity(libre, product.uom_id)
+                if product.uom_id.compare(libre_base, 0) > 0:
+                    res.append((move, Lot, libre_base))
+                continue
+            # Producto con lote: solo se puede devolver lo que salió con lote conocido
+            devuelto_lote = self._dev_devuelto_por_lote(move)
+            for lot, qty in self._dev_lotes_de_move(move).items():
+                libre = min(qty - devuelto_lote.get(lot, 0.0), libre_move) - reservado.get((move.id, lot.id), 0.0)
+                if move.product_uom.compare(libre, 0) <= 0:
+                    continue
+                libre_move -= libre
+                res.append((move, lot, move.product_uom._compute_quantity(libre, product.uom_id)))
         return res
 
     @api.model
@@ -244,7 +276,7 @@ class SaleOrder(models.Model):
             for product, moves in candidatas[order].items():
                 if product not in pendiente:
                     continue
-                total = sum(q for _m, q in moves)
+                total = sum(q for _m, _l, q in moves)
                 cubierto += min(total, pendiente[product]) / pendiente[product]
                 if product.uom_id.compare(total, pendiente[product]) >= 0:
                     completos += 1
@@ -257,9 +289,9 @@ class SaleOrder(models.Model):
             for product, moves in candidatas.pop(mejor).items():
                 if product not in pendiente:
                     continue
-                for move, qty in moves:
+                for move, lot, qty in moves:
                     tomar = min(qty, pendiente[product])
-                    asignaciones.append((move, tomar))
+                    asignaciones.append((move, lot, tomar))
                     pendiente[product] -= tomar
                     if product.uom_id.compare(pendiente[product], 0) <= 0:
                         del pendiente[product]
@@ -305,15 +337,28 @@ class SaleOrder(models.Model):
         """Vuelve a comprobar las cantidades justo antes de ejecutar (pueden haber cambiado o editado a mano)."""
         errores = []
         por_move = defaultdict(float)
+        por_move_lote = defaultdict(float)
         por_sale_line = defaultdict(float)
         for l in lineas:
-            por_move[l.move_id] += l.uom_id._compute_quantity(l.cantidad, l.move_id.product_uom)
+            q = l.uom_id._compute_quantity(l.cantidad, l.move_id.product_uom)
+            por_move[l.move_id] += q
+            if l.lot_id:
+                por_move_lote[(l.move_id, l.lot_id)] += q
+            elif l.product_id.tracking != 'none':
+                errores.append(_('%(prod)s en %(alb)s: falta indicar el lote',
+                                 prod=l.product_id.display_name, alb=l.picking_id.name))
             por_sale_line[l.sale_line_id] += l.uom_id._compute_quantity(l.cantidad, l.sale_line_id.product_uom_id)
         for move, qty in por_move.items():
             libre = move.quantity - self._dev_devuelto_de_move(move)
             if move.product_uom.compare(qty, libre) > 0:
                 errores.append(_('%(prod)s en %(alb)s: se piden %(q)s y solo quedan %(l)s por devolver',
                                  prod=move.product_id.display_name, alb=move.picking_id.name,
+                                 q=round(qty, 3), l=round(libre, 3)))
+        for (move, lot), qty in por_move_lote.items():
+            libre = self._dev_lotes_de_move(move).get(lot, 0.0) - self._dev_devuelto_por_lote(move).get(lot, 0.0)
+            if move.product_uom.compare(qty, libre) > 0:
+                errores.append(_('%(prod)s lote %(lote)s en %(alb)s: se piden %(q)s y solo quedan %(l)s por devolver',
+                                 prod=move.product_id.display_name, lote=lot.name, alb=move.picking_id.name,
                                  q=round(qty, 3), l=round(libre, 3)))
         for sl, qty in por_sale_line.items():
             tope = min(sl.qty_delivered, sl.qty_invoiced)
@@ -343,8 +388,27 @@ class SaleOrder(models.Model):
             raise UserError(_("No se han encontrado todas las líneas a devolver en el albarán %s.", picking.name))
 
         devolucion = wizard._create_return()
+        MoveLine = self.env['stock.move.line']
         for move in devolucion.move_ids:
-            move.quantity = move.product_uom_qty
+            origen = move.origin_returned_move_id
+            if move.product_id.tracking == 'none':
+                move.quantity = move.product_uom_qty
+            else:
+                # Mismo lote (y cantidad por lote) que salió en el albarán original
+                move._do_unreserve()
+                move.move_line_ids.unlink()
+                for l in lineas.filtered(lambda x: x.move_id == origen):
+                    MoveLine.create({
+                        'move_id': move.id,
+                        'picking_id': devolucion.id,
+                        'product_id': move.product_id.id,
+                        'product_uom_id': move.product_uom.id,
+                        'lot_id': l.lot_id.id,
+                        'quantity': l.uom_id._compute_quantity(l.cantidad, move.product_uom),
+                        'location_id': move.location_id.id,
+                        'location_dest_id': move.location_dest_id.id,
+                        'company_id': move.company_id.id,
+                    })
             move.picked = True
         devolucion.with_context(
             skip_backorder=True, picking_ids_not_to_backorder=devolucion.ids, skip_sms=True,
