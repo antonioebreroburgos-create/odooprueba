@@ -189,7 +189,17 @@
                                 </t>
                             </tr>
                         </table>
-                        <table class="campo">
+                        <table t-if="d['firma']" class="firmado">
+                            <tr>
+                                <td class="firma-img"><img t-att-src="image_data_uri(d['firma'])" alt="Firma del cliente"/></td>
+                                <td class="firma-texto">
+                                    <div class="firma-ok">Firmado digitalmente por el cliente</div>
+                                    <div class="gris" t-if="d['firma_fecha']" t-out="d['firma_fecha']"/>
+                                    <div class="gris" t-out="d['nombre_comercial'] or d['cliente'].name"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <table t-else="" class="campo">
                             <tr>
                                 <td><div class="etq" style="font-weight: normal; letter-spacing: 0; text-transform: none;">Nombre</div><div class="hueco"/></td>
                                 <td><div class="etq" style="font-weight: normal; letter-spacing: 0; text-transform: none;">DNI</div><div class="hueco"/></td>

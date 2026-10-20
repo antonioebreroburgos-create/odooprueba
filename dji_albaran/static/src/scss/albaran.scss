@@ -93,6 +93,12 @@ $dji-fondo: #F4F8FB;
     .recibi .campo td:last-child { padding-right: 0; }
     .recibi .hueco { border-bottom: 1px solid #9AA8B6; height: 26px; }
     .recibi .titulo-recibi, .recibi .aviso { vertical-align: bottom; }
+    table.firmado { margin-top: 8px; }
+    .firmado td { vertical-align: middle; }
+    .firmado td.firma-img { width: 240px; border-bottom: 1px solid #9AA8B6 !important; padding-bottom: 4px; }
+    .firmado td.firma-img img { max-height: 70px; max-width: 230px; }
+    .firmado td.firma-texto { padding-left: 16px; }
+    .firmado .firma-ok { font-weight: bold; color: $dji-azul; }
 
     // Promoción
     .promo {

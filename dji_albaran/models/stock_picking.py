@@ -1,4 +1,4 @@
-from odoo import models
+from odoo import fields, models
 
 
 def _num(valor, decimales=2):
@@ -29,6 +29,19 @@ def _cantidad(valor):
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
+
+    dji_firma_fecha = fields.Datetime(
+        string='Firmado el', copy=False, readonly=True,
+        help='Momento en que el cliente firmó la entrega en Odoo (botón Firmar).',
+    )
+
+    def write(self, vals):
+        # Guarda cuándo firma el cliente, para imprimirlo en el albarán
+        if vals.get('signature') and 'dji_firma_fecha' not in vals:
+            vals = dict(vals, dji_firma_fecha=fields.Datetime.now())
+        elif 'signature' in vals and not vals['signature']:
+            vals = dict(vals, dji_firma_fecha=False)
+        return super().write(vals)
 
     # ------------------------------------------------------------
     # Devoluciones: traslado de retorno (viene de un albarán o trae
@@ -214,6 +227,13 @@ class StockPicking(models.Model):
             for b in self.company_id.partner_id.bank_ids
         ]
         total_impuestos = sum(impuestos.values())
+
+        # Firma del cliente hecha en Odoo (botón Firmar del albarán de salida)
+        con_firma = salida if salida.signature else (self if self.signature else self.env['stock.picking'])
+        firma_fecha = ''
+        if con_firma and con_firma.dji_firma_fecha:
+            local = fields.Datetime.context_timestamp(con_firma, con_firma.dji_firma_fecha)
+            firma_fecha = local.strftime('%d/%m/%Y a las %H:%M')
         signo = '−' if devolucion else ''
         resumen = (f"{len(lineas)} {'línea' if len(lineas) == 1 else 'líneas'} · "
                    f"{_cantidad(unidades)} unidades{' devueltas' if devolucion else ''}")
@@ -238,4 +258,6 @@ class StockPicking(models.Model):
             'impuestos': [{'etiqueta': k, 'importe': signo + _num(v)} for k, v in impuestos.items()],
             'total': signo + _num(base + total_impuestos),
             'bancos': bancos,
+            'firma': con_firma.signature if con_firma else False,
+            'firma_fecha': firma_fecha,
         }
