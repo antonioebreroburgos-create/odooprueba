@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_tag_list_catalogo" model="ir.ui.view">
+        <field name="name">product.tag.list.catalogo</field>
+        <field name="model">product.tag</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Etiquetas de catálogo" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="grupo"/>
+                <field name="color" widget="color"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_catalogo_etiquetas" model="ir.actions.act_window">
+        <field name="name">Etiquetas de catálogo</field>
+        <field name="res_model">product.tag</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="product_tag_list_catalogo"/>
+    </record>
+</odoo>

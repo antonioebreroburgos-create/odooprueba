@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_catalogo_root" name="Catálogo" parent="stock.menu_stock_root"
+              sequence="45" groups="dji_catalogo_articulos.group_catalogo_gestor"/>
+    <menuitem id="menu_catalogo_articulos" name="Artículos (revisión)" parent="menu_catalogo_root"
+              action="action_catalogo_pendientes" sequence="10"/>
+    <menuitem id="menu_catalogo_etiquetas" name="Etiquetas" parent="menu_catalogo_root"
+              action="action_catalogo_etiquetas" sequence="20"/>
+</odoo>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_catalogo" model="ir.ui.view">
+        <field name="name">stock.picking.form.catalogo</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_completar_articulos" type="object"
+                        string="Completar artículos"
+                        icon="fa-tags"
+                        groups="dji_catalogo_articulos.group_catalogo_gestor"
+                        invisible="picking_type_code != 'incoming' or not id"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_completar_articulos" type="object"
+                        class="oe_stat_button" icon="fa-tags"
+                        groups="dji_catalogo_articulos.group_catalogo_gestor"
+                        invisible="picking_type_code != 'incoming' or catalogo_pendientes == 0">
+                    <field name="catalogo_pendientes" widget="statinfo" string="Por completar"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>
