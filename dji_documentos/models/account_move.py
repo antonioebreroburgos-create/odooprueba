@@ -3,7 +3,19 @@ import re
 
 from odoo import models
 
-from odoo.addons.dji_albaran.models.stock_picking import _cantidad, _nombre_comercial, _num
+from odoo.addons.dji_albaran.models.stock_picking import _cantidad, _num
+
+try:
+    from odoo.addons.dji_albaran.models.stock_picking import _nombre_comercial
+except ImportError:  # dji_albaran anterior a la 19.0.1.2.0
+    def _nombre_comercial(*contactos):
+        for contacto in contactos:
+            if not contacto or 'comercial' not in contacto._fields:
+                continue
+            nombre = (contacto.comercial or '').strip()
+            if nombre and nombre.lower() != (contacto.commercial_partner_id.name or '').strip().lower():
+                return nombre
+        return ''
 
 
 def _qr_png(env, texto):
