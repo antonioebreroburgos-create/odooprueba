@@ -3,7 +3,7 @@ import re
 
 from odoo import models
 
-from odoo.addons.dji_albaran.models.stock_picking import _cantidad, _num
+from odoo.addons.dji_albaran.models.stock_picking import _cantidad, _nombre_comercial, _num
 
 
 def _qr_png(env, texto):
@@ -262,6 +262,7 @@ class AccountMove(models.Model):
             'borrador': self.state == 'draft',
             'fecha': (self.invoice_date or self.date).strftime('%d/%m/%Y') if (self.invoice_date or self.date) else '',
             'cliente': cliente,
+            'nombre_comercial': _nombre_comercial(self.partner_shipping_id if 'partner_shipping_id' in self._fields else False, direccion, cliente),
             'direccion': direccion,
             'cod_cliente': cliente.ref or '',
             'comercial': self.invoice_user_id.name or '',

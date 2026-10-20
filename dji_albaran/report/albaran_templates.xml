@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Un albarán: cabecera y pie se repiten en cada página -->
+    <template id="report_albaran_documento">
+        <t t-set="company" t-value="o.company_id.sudo()"/>
+        <t t-set="d" t-value="o.dji_albaran_datos()"/>
+
+        <div t-attf-class="header o_company_#{company.id}_layout">
+            <div class="dji-alb">
+                <table>
+                    <tr>
+                        <td class="cab-logo">
+                            <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+                        </td>
+                        <td class="cab-empresa">
+                            <div class="nombre titulo" t-out="company.name"/>
+                            <div class="gris">
+                                <t t-out="company.street"/><t t-if="company.street2"> <t t-out="company.street2"/></t>
+                                · <t t-out="company.zip"/> <t t-out="company.city"/><t t-if="company.state_id"> (<t t-out="company.state_id.name"/>)</t>
+                            </div>
+                            <div class="gris">
+                                <t t-if="company.vat">NIF <t t-out="company.vat"/></t>
+                                <t t-if="company.phone"> · <t t-out="company.phone"/></t>
+                                <t t-if="company.email"> · <t t-out="company.email"/></t>
+                            </div>
+                        </td>
+                        <td class="cab-doc">
+                            <div t-attf-class="tipo titulo #{'tipo-devolucion' if d['devolucion'] else ''}" t-out="d['titulo']"/>
+                            <div t-attf-class="numero titulo #{'numero-devolucion' if d['devolucion'] else ''}" t-out="d['numero']"/>
+                            <div t-if="d['devolucion']" class="sub-devolucion">Abono · Material retirado</div>
+                        </td>
+                    </tr>
+                </table>
+                <table class="tricolor">
+                    <tr>
+                        <td style="width: 60%; background: #04538E;"/>
+                        <td style="width: 20%; background: #E99138;"/>
+                        <td style="width: 20%; background: #85BF09;"/>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div t-attf-class="article o_company_#{company.id}_layout"
+             t-att-data-oe-model="o._name" t-att-data-oe-id="o.id"
+             t-att-data-oe-lang="o.env.context.get('lang')">
+            <div class="dji-alb">
+
+                <table class="meta">
+                    <tr>
+                        <td><div class="etq">Fecha</div><div class="valor" t-out="d['fecha']"/></td>
+                        <td t-if="d['original']"><div class="etq">Albarán original</div><div class="valor" t-out="d['original']"/></td>
+                        <td><div class="etq">Pedido</div><div class="valor" t-out="d['pedido']"/></td>
+                        <td><div class="etq">Comercial</div><div class="valor" t-out="d['comercial'] or '—'"/></td>
+                    </tr>
+                </table>
+
+                <table t-if="d['devolucion']" class="aviso-devolucion">
+                    <tr>
+                        <td class="marca titulo">DEVOLUCIÓN</td>
+                        <td class="texto">
+                            <b>Material retirado al cliente.</b> Este documento no es una entrega: recoge la mercancía devuelta<t t-if="d['original']"> del albarán <t t-out="d['original']"/></t>.
+                            <t t-if="d['valorado']">Su importe se abonará mediante factura rectificativa.</t>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="tarjetas">
+                    <tr>
+                        <td style="padding-right: 7px;">
+                            <div class="tarjeta">
+                                <div class="etq-azul">Cliente</div>
+                                <div class="principal" t-out="d['nombre_comercial'] or d['cliente'].name"/>
+                                <div t-if="d['nombre_comercial']" class="razon" t-out="d['cliente'].name"/>
+                                <div t-if="d['cliente'].vat">NIF <t t-out="d['cliente'].vat"/></div>
+                                <div class="gris" t-if="d['cliente'].phone" t-out="d['cliente'].phone"/>
+                            </div>
+                        </td>
+                        <td style="padding-left: 7px;">
+                            <div class="tarjeta suave">
+                                <div class="etq-azul" t-out="'Recogida en' if d['devolucion'] else 'Dirección de entrega'"/>
+                                <div class="principal" style="font-weight: 600;">
+                                    <t t-if="d['entrega'] != d['cliente'] and d['entrega'].name"><t t-out="d['entrega'].name"/> · </t><t t-out="d['entrega'].street"/>
+                                    <t t-if="d['entrega'].street2"> <t t-out="d['entrega'].street2"/></t>
+                                </div>
+                                <div>
+                                    <t t-out="d['entrega'].zip"/> <t t-out="d['entrega'].city"/><t t-if="d['entrega'].state_id"> (<t t-out="d['entrega'].state_id.name"/>)</t>
+                                </div>
+                                <div class="gris" t-if="d['entrega'].phone and d['entrega'] != d['cliente']" t-out="d['entrega'].phone"/>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="lineas">
+                    <thead>
+                        <tr>
+                            <th style="width: 58px;">Código</th>
+                            <th>Artículo</th>
+                            <th style="width: 92px;">Lote</th>
+                            <th style="width: 74px;">Caducidad</th>
+                            <th class="num" style="width: 48px;">Cant.</th>
+                            <t t-if="d['valorado']">
+                                <th class="num" style="width: 62px;">Precio</th>
+                                <th class="num" style="width: 40px;">IVA</th>
+                                <th class="num" style="width: 70px;">Importe</th>
+                            </t>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="d['lineas']" t-as="l">
+                            <tr t-att-class="'par' if l_index % 2 else ''">
+                                <td class="gris" t-out="l['codigo']"/>
+                                <td class="art"><t t-out="l['nombre']"/><span t-if="l['promo']" class="promo">PROMO</span></td>
+                                <td class="lote" t-out="l['lote']"/>
+                                <td class="cad" t-out="l['caducidad']"/>
+                                <td class="num cant">
+                                    <t t-out="l['cantidad']"/>
+                                    <div t-if="l['unidad']" class="unidad" t-out="l['unidad']"/>
+                                </td>
+                                <t t-if="d['valorado']">
+                                    <t t-if="l['promo']">
+                                        <td class="num"/>
+                                        <td class="num"/>
+                                        <td class="num"><span class="promo">PROMO</span></td>
+                                    </t>
+                                    <t t-else="">
+                                        <td class="num"><t t-out="l['precio']"/><t t-if="l['precio']"> €</t></td>
+                                        <td class="num gris" t-out="l['iva']"/>
+                                        <td class="num" style="font-weight: 600;"><t t-out="l['importe']"/><t t-if="l['importe']"> €</t></td>
+                                    </t>
+                                </t>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+                <table class="resumen">
+                    <tr>
+                        <td t-out="d['resumen']"/>
+                        <td t-if="d['valorado']" style="text-align: right;">Precios en euros, sin IVA</td>
+                    </tr>
+                </table>
+
+                <div class="cierre">
+                    <table>
+                        <tr>
+                            <td>
+                                <div class="obs">
+                                    <div class="etq">Observaciones</div>
+                                    <t t-if="not is_html_empty(d['nota'])">
+                                        <div class="gris" t-out="d['nota']"/>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="linea-escribir"/>
+                                        <div class="linea-escribir"/>
+                                    </t>
+                                </div>
+                            </td>
+                            <td t-if="d['valorado']" style="width: 250px; padding-left: 16px;">
+                                <table class="totales">
+                                    <tr>
+                                        <td class="gris">Base imponible</td>
+                                        <td class="num"><t t-out="d['base']"/> €</td>
+                                    </tr>
+                                    <tr t-foreach="d['impuestos']" t-as="imp" class="sep">
+                                        <td class="gris" t-out="imp['etiqueta']"/>
+                                        <td class="num"><t t-out="imp['importe']"/> €</td>
+                                    </tr>
+                                    <tr t-attf-class="total #{'total-devolucion' if d['devolucion'] else ''}">
+                                        <td class="etq-total titulo" t-out="'TOTAL ABONO' if d['devolucion'] else 'TOTAL'"/>
+                                        <td class="num importe-total titulo"><t t-out="d['total']"/> €</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="recibi">
+                        <table>
+                            <tr>
+                                <t t-if="d['devolucion']">
+                                    <td class="titulo-recibi titulo">CONFORME CON LA RETIRADA</td>
+                                    <td class="aviso">El cliente entrega la mercancía indicada. Las incidencias se anotan en Observaciones.</td>
+                                </t>
+                                <t t-else="">
+                                    <td class="titulo-recibi titulo">RECIBÍ CONFORME</td>
+                                    <td class="aviso">Compruebe la mercancía antes de firmar. Las incidencias se anotan en Observaciones.</td>
+                                </t>
+                            </tr>
+                        </table>
+                        <table class="campo">
+                            <tr>
+                                <td><div class="etq" style="font-weight: normal; letter-spacing: 0; text-transform: none;">Nombre</div><div class="hueco"/></td>
+                                <td><div class="etq" style="font-weight: normal; letter-spacing: 0; text-transform: none;">DNI</div><div class="hueco"/></td>
+                                <td><div class="etq" style="font-weight: normal; letter-spacing: 0; text-transform: none;">Fecha y hora</div><div class="hueco"/></td>
+                                <td><div class="etq" style="font-weight: normal; letter-spacing: 0; text-transform: none;">Firma y sello</div><div class="hueco"/></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div t-attf-class="footer o_company_#{company.id}_layout">
+            <div class="dji-alb">
+                <table class="pie">
+                    <tr>
+                        <td>
+                            <t t-if="d['bancos']">
+                                <b>Transferencia</b>
+                                <t t-foreach="d['bancos']" t-as="b"> · <t t-out="b['banco']"/> <t t-out="b['cuenta']"/></t>
+                            </t>
+                        </td>
+                        <td style="text-align: right; white-space: nowrap; width: 90px;">
+                            Página <span class="page"/> / <span class="topage"/>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template id="report_albaran">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="dji_albaran.report_albaran_documento" t-lang="o.partner_id.lang"/>
+            </t>
+        </t>
+    </template>
+
+</odoo>

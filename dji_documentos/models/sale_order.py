@@ -2,7 +2,7 @@ import re
 
 from odoo import models
 
-from odoo.addons.dji_albaran.models.stock_picking import _cantidad, _num
+from odoo.addons.dji_albaran.models.stock_picking import _cantidad, _nombre_comercial, _num
 
 from .account_move import _es_promo, dji_impuestos
 
@@ -60,6 +60,7 @@ class SaleOrder(models.Model):
             'comercial': comercial.name or '',
             'contacto': contacto,
             'cliente': self.partner_id.commercial_partner_id,
+            'nombre_comercial': _nombre_comercial(self.partner_shipping_id, self.partner_id, self.partner_id.commercial_partner_id),
             'entrega': self.partner_shipping_id or self.partner_id,
             'lineas': lineas,
             'impuestos': dji_impuestos(self),

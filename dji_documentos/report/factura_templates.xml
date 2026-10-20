@@ -79,6 +79,7 @@
                         <td class="fac-cliente">
                             <div class="etq-doc" t-out="'Cliente' if rect else 'Facturar a'"/>
                             <div class="principal" t-out="d['cliente'].name"/>
+                            <div t-if="d['nombre_comercial']" class="razon" t-out="d['nombre_comercial']"/>
                             <div t-if="d['cliente'].vat">NIF <t t-out="d['cliente'].vat"/></div>
                             <div class="gris">
                                 <t t-out="d['direccion'].street"/><t t-if="d['direccion'].street2"> <t t-out="d['direccion'].street2"/></t>

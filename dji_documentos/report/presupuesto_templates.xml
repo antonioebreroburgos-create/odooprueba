@@ -39,7 +39,8 @@
                         <td style="padding-right: 7px;">
                             <div class="tarjeta-pre">
                                 <div class="etq-pre">Para</div>
-                                <div class="principal" t-out="d['cliente'].name"/>
+                                <div class="principal" t-out="d['nombre_comercial'] or d['cliente'].name"/>
+                                <div t-if="d['nombre_comercial']" class="razon" t-out="d['cliente'].name"/>
                                 <div t-if="d['cliente'].vat">NIF <t t-out="d['cliente'].vat"/></div>
                                 <div class="gris" t-if="d['cliente'].phone" t-out="d['cliente'].phone"/>
                             </div>

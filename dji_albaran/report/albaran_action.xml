@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Se reutiliza la acción estándar "Albarán de entrega" (botón Imprimir),
+         apuntándola a la plantilla de DJI: así es la principal sin duplicar
+         opciones en el menú Imprimir. -->
+    <record id="stock.action_report_delivery" model="ir.actions.report">
+        <field name="name">Albarán de entrega</field>
+        <field name="report_name">dji_albaran.report_albaran</field>
+        <field name="report_file">dji_albaran.report_albaran</field>
+        <field name="paperformat_id" ref="dji_albaran.paperformat_albaran_dji"/>
+        <field name="print_report_name">'Albarán %s - %s' % (object.dji_albaran_numero().replace('/', '_'), object.partner_id.commercial_partner_id.name or '')</field>
+    </record>
+</odoo>
