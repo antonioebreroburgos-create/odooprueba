@@ -239,15 +239,15 @@
         </div>
     </template>
 
-    <!-- Se engancha al informe de facturas de serie (el que usan Imprimir,
-         Enviar, el portal y Copiloto): si la factura pide la plantilla DJI,
-         se pinta esta. -->
-    <template id="report_invoice_dji" inherit_id="account.report_invoice">
-        <xpath expr="//t[@t-call='account.report_invoice_document']" position="after">
-            <t t-elif="o._get_name_invoice_report() == 'dji_documentos.report_factura_documento'"
-               t-call="dji_documentos.report_factura_documento"
-               t-lang="lang"/>
-        </xpath>
+    <!-- Contenedor: lo usa ir.actions.report (models/ir_actions_report.py)
+         en lugar del de serie cuando todo lo que se imprime son facturas o
+         rectificativas de cliente. -->
+    <template id="report_factura">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="dji_documentos.report_factura_documento" t-lang="o.partner_id.lang"/>
+            </t>
+        </t>
     </template>
 
 </odoo>

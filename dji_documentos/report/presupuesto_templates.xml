@@ -148,11 +148,14 @@
         </div>
     </template>
 
-    <!-- Se engancha al informe de serie "Presupuesto / Pedido" -->
-    <template id="report_saleorder_raw_dji" inherit_id="sale.report_saleorder_raw">
-        <xpath expr="//t[@t-call='sale.report_saleorder_document']" position="attributes">
-            <attribute name="t-call">dji_documentos.report_presupuesto_documento</attribute>
-        </xpath>
+    <!-- Contenedor: lo usa ir.actions.report (models/ir_actions_report.py)
+         en lugar del de serie "Presupuesto / Pedido". -->
+    <template id="report_presupuesto">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="dji_documentos.report_presupuesto_documento" t-lang="doc.partner_id.lang"/>
+            </t>
+        </t>
     </template>
 
 </odoo>

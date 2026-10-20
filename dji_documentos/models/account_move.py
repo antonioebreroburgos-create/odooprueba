@@ -81,15 +81,6 @@ class AccountMove(models.Model):
     _inherit = 'account.move'
 
     # ------------------------------------------------------------
-    # Diseño: facturas y rectificativas de cliente con la plantilla DJI
-    # ------------------------------------------------------------
-    def _get_name_invoice_report(self):
-        self.ensure_one()
-        if self.move_type in ('out_invoice', 'out_refund'):
-            return 'dji_documentos.report_factura_documento'
-        return super()._get_name_invoice_report()
-
-    # ------------------------------------------------------------
     # Albaranes de cada línea de factura
     # ------------------------------------------------------------
     def _dji_albaranes_linea(self, linea):
