@@ -15,10 +15,21 @@ def normalizar(texto):
 class ProductTag(models.Model):
     _inherit = 'product.tag'
 
-    grupo = fields.Char(
-        string='Grupo',
-        help='Opcional. Agrupa las etiquetas en el catálogo: Tipo, Dieta, Conservación, Uso…',
+    grupo_id = fields.Many2one(
+        'dji.catalogo.grupo', string='Grupo', index=True, ondelete='set null',
+        help='Momento, Origen, Preparación, Conservación, Alérgenos, Características, Calidad…',
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Al crear una etiqueta desde un apartado (p. ej. "Origen"), queda en ese grupo
+        codigo = self.env.context.get('dji_grupo_codigo')
+        if codigo and codigo != 'otras':
+            grupo = self.env['dji.catalogo.grupo'].search([('codigo', '=', codigo)], limit=1)
+            for vals in vals_list:
+                if grupo and not vals.get('grupo_id'):
+                    vals['grupo_id'] = grupo.id
+        return super().create(vals_list)
 
     @api.constrains('name')
     def _check_nombre_duplicado(self):

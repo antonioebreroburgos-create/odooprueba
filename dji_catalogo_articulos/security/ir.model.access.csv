@@ -3,3 +3,5 @@ access_catalogo_completar,dji.catalogo.completar,model_dji_catalogo_completar,gr
 access_catalogo_completar_linea,dji.catalogo.completar.linea,model_dji_catalogo_completar_linea,group_catalogo_gestor,1,1,1,1
 access_catalogo_product_tag,product.tag catálogo,product.model_product_tag,group_catalogo_gestor,1,1,1,0
 access_catalogo_product_template,product.template catálogo,product.model_product_template,group_catalogo_gestor,1,1,0,0
+access_catalogo_grupo_gestor,dji.catalogo.grupo gestor,model_dji_catalogo_grupo,group_catalogo_gestor,1,1,1,1
+access_catalogo_grupo_user,dji.catalogo.grupo usuario,model_dji_catalogo_grupo,base.group_user,1,0,0,0

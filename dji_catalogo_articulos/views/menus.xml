@@ -6,4 +6,6 @@
               action="action_catalogo_pendientes" sequence="10"/>
     <menuitem id="menu_catalogo_etiquetas" name="Etiquetas" parent="menu_catalogo_root"
               action="action_catalogo_etiquetas" sequence="20"/>
+    <menuitem id="menu_catalogo_grupos" name="Grupos" parent="menu_catalogo_root"
+              action="action_catalogo_grupos" sequence="30"/>
 </odoo>

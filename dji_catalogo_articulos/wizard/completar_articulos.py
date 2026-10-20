@@ -1,5 +1,7 @@
 from odoo import api, fields, models
 
+from ..models.catalogo_campos import APARTADOS, dominio_grupo, es_del_grupo
+
 CAMPO_UDS = 'uom_qty'  # "Unidades por defecto" (campo propio de DJI en product.template)
 
 
@@ -28,7 +30,8 @@ class CatalogoCompletar(models.TransientModel):
                 'nombre': p.name,
                 'imagen': p.image_1920,
                 'imagen_original': p.imagen_original,
-                'tag_ids': [(6, 0, p.product_tag_ids.ids)],
+                **{f'tags_{c}': [(6, 0, p.product_tag_ids.filtered(lambda t, c=c: es_del_grupo(t, c)).ids)]
+                   for c in APARTADOS},
                 'uds_defecto': p[CAMPO_UDS] if tiene_uds else 0.0,
                 'ficha': p.ficha_tecnica,
                 'ficha_nombre': p.ficha_tecnica_nombre,
@@ -95,9 +98,50 @@ class CatalogoCompletarLinea(models.TransientModel):
     nombre = fields.Char(string='Descripción')
     imagen = fields.Image(string='Foto', max_width=1920, max_height=1920)
     imagen_original = fields.Image(string='Foto original', max_width=1920, max_height=1920)
-    tag_ids = fields.Many2many(
-        'product.tag', 'dji_catalogo_completar_linea_tag_rel', 'linea_id', 'tag_id', string='Etiquetas',
+    tags_momento = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_momento_rel', 'linea_id', 'tag_id',
+        string='Momento', domain=dominio_grupo('momento'),
     )
+    tags_origen = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_origen_rel', 'linea_id', 'tag_id',
+        string='Origen', domain=dominio_grupo('origen'),
+    )
+    tags_preparacion = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_preparacion_rel', 'linea_id', 'tag_id',
+        string='Preparación', domain=dominio_grupo('preparacion'),
+    )
+    tags_conservacion = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_conservacion_rel', 'linea_id', 'tag_id',
+        string='Conservación', domain=dominio_grupo('conservacion'),
+    )
+    tags_alergenos = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_alergenos_rel', 'linea_id', 'tag_id',
+        string='Alérgenos', domain=dominio_grupo('alergenos'),
+    )
+    tags_caracteristicas = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_caracteristicas_rel', 'linea_id', 'tag_id',
+        string='Características', domain=dominio_grupo('caracteristicas'),
+    )
+    tags_calidad = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_calidad_rel', 'linea_id', 'tag_id',
+        string='Calidad', domain=dominio_grupo('calidad'),
+    )
+    tags_otras = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_otras_rel', 'linea_id', 'tag_id',
+        string='Otras etiquetas', domain=dominio_grupo('otras'),
+    )
+    tag_ids = fields.Many2many(
+        'product.tag', string='Etiquetas', compute='_compute_tag_ids',
+        help='Todas las etiquetas del artículo, de todos los grupos.',
+    )
+
+    @api.depends(*[f'tags_{c}' for c in APARTADOS])
+    def _compute_tag_ids(self):
+        for linea in self:
+            todas = self.env['product.tag']
+            for c in APARTADOS:
+                todas |= linea[f'tags_{c}']
+            linea.tag_ids = todas
     uds_defecto = fields.Float(string='Uds. por defecto', digits='Product Unit')
     ficha = fields.Binary(string='Ficha técnica (PDF)')
     ficha_nombre = fields.Char(string='Nombre del archivo')

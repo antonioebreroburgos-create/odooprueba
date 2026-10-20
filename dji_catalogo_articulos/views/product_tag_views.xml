@@ -7,10 +7,26 @@
         <field name="arch" type="xml">
             <list string="Etiquetas de catálogo" editable="bottom">
                 <field name="sequence" widget="handle"/>
+                <field name="grupo_id"/>
                 <field name="name"/>
-                <field name="grupo"/>
                 <field name="color" widget="color"/>
             </list>
+        </field>
+    </record>
+
+    <record id="product_tag_search_catalogo" model="ir.ui.view">
+        <field name="name">product.tag.search.catalogo</field>
+        <field name="model">product.tag</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Etiquetas de catálogo">
+                <field name="name"/>
+                <field name="grupo_id"/>
+                <filter name="sin_grupo" string="Sin grupo" domain="[('grupo_id', '=', False)]"/>
+                <group>
+                    <filter name="por_grupo" string="Grupo" context="{'group_by': 'grupo_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -19,5 +35,25 @@
         <field name="res_model">product.tag</field>
         <field name="view_mode">list</field>
         <field name="view_id" ref="product_tag_list_catalogo"/>
+        <field name="search_view_id" ref="product_tag_search_catalogo"/>
+        <field name="context">{'search_default_por_grupo': 1}</field>
+    </record>
+
+    <record id="catalogo_grupo_list" model="ir.ui.view">
+        <field name="name">dji.catalogo.grupo.list</field>
+        <field name="model">dji.catalogo.grupo</field>
+        <field name="arch" type="xml">
+            <list string="Grupos de etiquetas" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="tag_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_catalogo_grupos" model="ir.actions.act_window">
+        <field name="name">Grupos de etiquetas</field>
+        <field name="res_model">dji.catalogo.grupo</field>
+        <field name="view_mode">list</field>
     </record>
 </odoo>

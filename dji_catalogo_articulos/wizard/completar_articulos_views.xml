@@ -16,7 +16,7 @@
                         <field name="imagen" widget="image" options="{'size': [48, 48]}"/>
                         <field name="referencia"/>
                         <field name="nombre"/>
-                        <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                        <field name="tag_ids" widget="many2many_tags" options="{'color_field': 'color'}" readonly="1"/>
                         <field name="uds_defecto" string="Uds." column_invisible="not parent.tiene_uds"/>
                         <field name="ficha_nombre" string="Ficha"/>
                         <field name="ya_revisado" column_invisible="1"/>
@@ -41,9 +41,6 @@
                             <group>
                                 <field name="product_tmpl_id"/>
                                 <field name="referencia"/>
-                                <field name="tag_ids" widget="many2many_tags"
-                                       options="{'color_field': 'color', 'no_create_edit': True}"
-                                       placeholder="Escribe para buscar o crear (ej. Sin gluten)"/>
                                 <field name="uds_defecto" invisible="not tiene_uds"/>
                                 <field name="ficha" filename="ficha_nombre"/>
                                 <field name="ficha_nombre" invisible="1"/>
@@ -52,6 +49,16 @@
                             <group>
                                 <field name="imagen" widget="image" options="{'size': [300, 300]}"/>
                             </group>
+                        </group>
+                        <group string="Etiquetas de catálogo">
+                            <field name="tags_momento" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'momento'}"/>
+                            <field name="tags_origen" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'origen'}"/>
+                            <field name="tags_preparacion" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'preparacion'}"/>
+                            <field name="tags_conservacion" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'conservacion'}"/>
+                            <field name="tags_alergenos" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'alergenos'}"/>
+                            <field name="tags_caracteristicas" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'caracteristicas'}"/>
+                            <field name="tags_calidad" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'calidad'}"/>
+                            <field name="tags_otras" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'otras'}"/>
                         </group>
                     </form>
                 </field>
