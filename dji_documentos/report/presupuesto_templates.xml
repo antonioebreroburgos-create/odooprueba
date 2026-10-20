@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Presupuesto (pedido sin confirmar) y pedido confirmado -->
+    <template id="report_presupuesto_documento">
+        <t t-set="company" t-value="doc.company_id.sudo()"/>
+        <t t-set="d" t-value="doc.dji_presupuesto_datos()"/>
+
+        <div t-attf-class="header o_company_#{company.id}_layout">
+            <div class="dji-alb dji-pre">
+                <table>
+                    <tr>
+                        <t t-call="dji_documentos.dji_cabecera_empresa"/>
+                        <td class="cab-pre">
+                            <div class="pre-titulo titulo" t-out="d['titulo']"/>
+                            <div class="pre-numero titulo" t-out="d['numero']"/>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div t-attf-class="article o_company_#{company.id}_layout"
+             t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id"
+             t-att-data-oe-lang="doc.env.context.get('lang')">
+            <div class="dji-alb dji-pre">
+
+                <table class="pre-meta">
+                    <tr>
+                        <td><div class="etq">Fecha</div><div class="valor" t-out="d['fecha']"/></td>
+                        <td t-if="d['validez']"><div class="etq">Válido hasta</div><div class="valor verde" t-out="d['validez']"/></td>
+                        <td t-if="d['comercial']"><div class="etq">Comercial</div><div class="valor" t-out="d['comercial']"/></td>
+                        <td t-if="d['contacto']"><div class="etq">Contacto</div><div class="valor" t-out="d['contacto']"/></td>
+                    </tr>
+                </table>
+
+                <table class="pre-tarjetas">
+                    <tr>
+                        <td style="padding-right: 7px;">
+                            <div class="tarjeta-pre">
+                                <div class="etq-pre">Para</div>
+                                <div class="principal" t-out="d['cliente'].name"/>
+                                <div t-if="d['cliente'].vat">NIF <t t-out="d['cliente'].vat"/></div>
+                                <div class="gris" t-if="d['cliente'].phone" t-out="d['cliente'].phone"/>
+                            </div>
+                        </td>
+                        <td style="padding-left: 7px;">
+                            <div class="tarjeta-pre">
+                                <div class="etq-pre">Entrega en</div>
+                                <div class="principal" style="font-weight: 600;">
+                                    <t t-if="d['entrega'] != d['cliente'] and d['entrega'].name"><t t-out="d['entrega'].name"/> · </t><t t-out="d['entrega'].street"/>
+                                    <t t-if="d['entrega'].street2"> <t t-out="d['entrega'].street2"/></t>
+                                </div>
+                                <div>
+                                    <t t-out="d['entrega'].zip"/> <t t-out="d['entrega'].city"/><t t-if="d['entrega'].state_id"> (<t t-out="d['entrega'].state_id.name"/>)</t>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="pre-lineas">
+                    <thead>
+                        <tr>
+                            <th style="width: 58px;">Código</th>
+                            <th>Artículo</th>
+                            <th class="num" style="width: 44px;">Cant.</th>
+                            <th class="num" style="width: 60px;">Precio</th>
+                            <th class="num" style="width: 42px;">Dto.</th>
+                            <th class="num" style="width: 40px;">IVA</th>
+                            <th class="num" style="width: 72px;">Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="d['lineas']" t-as="l">
+                            <tr t-if="l['nota']" t-attf-class="nota #{'seccion' if l['seccion'] else ''}">
+                                <td/>
+                                <td colspan="6" t-out="l['nota']"/>
+                            </tr>
+                            <tr t-else="" class="linea">
+                                <td class="gris" t-out="l['codigo']"/>
+                                <td class="art"><t t-out="l['nombre']"/><span t-if="l['promo']" class="promo">PROMO</span></td>
+                                <td class="num cant">
+                                    <t t-out="l['cantidad']"/>
+                                    <div t-if="l['unidad']" class="unidad" t-out="l['unidad']"/>
+                                </td>
+                                <td class="num" t-out="l['precio']"/>
+                                <td class="num gris" t-out="l['dto']"/>
+                                <td class="num gris" t-out="l['iva']"/>
+                                <td class="num importe">
+                                    <span t-if="l['promo']" class="promo">PROMO</span>
+                                    <t t-else="" t-out="l['importe']"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+                <div class="resumen-fac">Precios en euros, sin IVA.<t t-if="d['es_presupuesto']"> Disponibilidad sujeta a stock en el momento de confirmar.</t></div>
+
+                <div class="cierre">
+                    <table>
+                        <tr>
+                            <td class="cierre-izq">
+                                <div class="condiciones">
+                                    <div class="etq-pre">Condiciones</div>
+                                    <div t-if="d['validez']">Oferta válida hasta el&#160;<b t-out="d['validez']"/>.</div>
+                                    <div t-if="d['forma_pago']">Forma de pago: <t t-out="d['forma_pago']"/>.</div>
+                                    <div class="gris" t-if="d['es_presupuesto']">Para confirmar el pedido, responda a este mensaje o llame a su comercial.</div>
+                                    <div class="gris" t-if="not is_html_empty(d['nota'])" t-out="d['nota']"/>
+                                </div>
+                            </td>
+                            <td class="cierre-der">
+                                <table class="totales totales-pre">
+                                    <tr>
+                                        <td class="gris">Base imponible</td>
+                                        <td class="num"><t t-out="d['base']"/> €</td>
+                                    </tr>
+                                    <tr t-foreach="d['impuestos']" t-as="imp" class="sep">
+                                        <td class="gris" t-out="imp['etiqueta']"/>
+                                        <td class="num"><t t-out="imp['cuota']"/> €</td>
+                                    </tr>
+                                    <tr class="total">
+                                        <td class="etq-total titulo">TOTAL</td>
+                                        <td class="num importe-total titulo"><t t-out="d['total']"/> €</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div t-attf-class="footer o_company_#{company.id}_layout">
+            <div class="dji-alb">
+                <table class="pie">
+                    <tr>
+                        <td>
+                            <t t-if="d['es_presupuesto']"><b>Este documento no es una factura.</b> Sin validez fiscal.</t>
+                        </td>
+                        <td style="text-align: right; white-space: nowrap; width: 90px;">
+                            Página <span class="page"/> / <span class="topage"/>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <!-- Se engancha al informe de serie "Presupuesto / Pedido" -->
+    <template id="report_saleorder_raw_dji" inherit_id="sale.report_saleorder_raw">
+        <xpath expr="//t[@t-call='sale.report_saleorder_document']" position="attributes">
+            <attribute name="t-call">dji_documentos.report_presupuesto_documento</attribute>
+        </xpath>
+    </template>
+
+</odoo>

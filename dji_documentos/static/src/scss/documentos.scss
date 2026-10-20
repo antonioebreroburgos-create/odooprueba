@@ -1,0 +1,143 @@
+// Factura, rectificativa y presupuesto DJI. Usa la base de .dji-alb
+// (dji_albaran: fuentes, reseteo de bordes, cabecera, pie) y añade lo suyo.
+// Motor wkhtmltopdf: sin flex ni grid, todo con tablas.
+$doc-azul: #04538E;
+$doc-marino: #0B3557;
+$doc-rect: #A9530F;
+$doc-rect-texto: #8A4A12;
+$doc-rect-fondo: #FDF4EA;
+$doc-verde: #4A7A00;
+$doc-verde-barra: #85BF09;
+$doc-verde-fondo: #F1F7E6;
+$doc-verde-texto: #3E6400;
+$doc-naranja: #E99138;
+$doc-tinta: #1E2A36;
+$doc-gris: #4A5866;
+$doc-gris-claro: #5B6875;
+$doc-linea: #D5DEE7;
+$doc-linea-suave: #E3E9EF;
+$doc-fondo: #F4F8FB;
+
+.dji-alb {
+    .etq-doc { font-size: 10px; font-weight: bold; letter-spacing: 1px; color: $doc-azul; text-transform: uppercase; margin-bottom: 2px; }
+    .promo {
+        display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px;
+        background: $doc-naranja; color: #FFFFFF; font-size: 9px; font-weight: bold;
+        letter-spacing: 1px; vertical-align: middle;
+    }
+    td.num .promo { margin-left: 0; }
+
+    // ---------- Factura ----------
+    .cab-caja { width: 236px; vertical-align: top; }
+    .caja { background: $doc-marino; color: #FFFFFF; border-radius: 10px; padding: 12px 16px; }
+    .caja-tipo { font-size: 10px; font-weight: 600; letter-spacing: 3px; }
+    .caja-numero { font-size: 20px; font-weight: 700; margin-top: 3px; white-space: nowrap; }
+    table.caja-datos { margin-top: 7px; border-top: 1px solid #5C7A94 !important; }
+    .caja-datos td { padding-top: 6px; width: 50%; }
+    .caja-etq { font-size: 8px; font-weight: bold; letter-spacing: 1px; }
+    .caja-valor { font-size: 12px; font-weight: bold; white-space: nowrap; }
+
+    .fac-tarjetas { margin-bottom: 16px; }
+    .fac-tarjetas td.fac-cliente {
+        width: 58%; background: $doc-fondo !important; border-top: 3px solid $doc-azul !important;
+        padding: 10px 14px; border-radius: 0 0 8px 8px;
+    }
+    .fac-tarjetas td.fac-info { padding: 10px 0 0 16px; border-top: 3px solid $doc-linea !important; }
+    .fac-info table td { padding: 2px 0; }
+    .fac-info td.dato { text-align: right; font-weight: 600; }
+    .fac-tarjetas .principal { font-size: 14px; font-weight: bold; }
+
+    .fac-lineas, .pre-lineas { margin-top: 4px; }
+    .fac-lineas thead th {
+        border-top: 2px solid $doc-tinta !important; border-bottom: 1px solid $doc-tinta !important;
+        padding: 7px 6px; font-size: 10px; font-weight: bold; letter-spacing: 1px;
+        text-transform: uppercase; text-align: left; color: $doc-tinta;
+    }
+    .fac-lineas thead th.num, .pre-lineas thead th.num { text-align: right; }
+    .fac-lineas tr.grupo td { padding: 10px 6px 4px; font-size: 11px; }
+    .fac-lineas tr.grupo .grupo-titulo { font-weight: bold; color: $doc-azul; }
+    .fac-lineas tr.linea td, .pre-lineas tr.linea td {
+        padding: 6px 6px; border-bottom: 1px solid $doc-linea-suave !important; vertical-align: middle;
+    }
+    .fac-lineas tr, .pre-lineas tr { page-break-inside: avoid; }
+    .fac-lineas td:first-child, .fac-lineas th:first-child,
+    .pre-lineas td:first-child, .pre-lineas th:first-child { padding-left: 10px; }
+    .fac-lineas td:last-child, .fac-lineas th:last-child,
+    .pre-lineas td:last-child, .pre-lineas th:last-child { padding-right: 10px; }
+    .fac-lineas .art, .pre-lineas .art { font-size: 12px; font-weight: 600; }
+    .fac-lineas .cant, .pre-lineas .cant { font-weight: bold; }
+    .fac-lineas .importe, .pre-lineas .importe { font-weight: 600; }
+    .fac-lineas .unidad, .pre-lineas .unidad { font-size: 10px; font-weight: normal; color: $doc-gris-claro; }
+    tr.nota td { padding: 5px 6px; font-style: italic; color: $doc-gris; }
+    tr.nota.seccion td { font-style: normal; font-weight: bold; color: $doc-tinta; padding-top: 10px; }
+    .resumen-fac { padding: 6px 10px; font-size: 11px; color: $doc-gris-claro; }
+
+    .cierre-izq { padding-right: 18px; vertical-align: bottom; }
+    .cierre-der { width: 250px; vertical-align: bottom; }
+    table.desglose td { padding: 4px 0; border-bottom: 1px solid $doc-linea-suave !important; }
+    table.desglose tr.cab td {
+        font-size: 10px; font-weight: bold; letter-spacing: 1px; color: $doc-gris-claro;
+        text-transform: uppercase; border-bottom: 1px solid $doc-linea !important;
+    }
+    .pago { margin-top: 12px; background: $doc-fondo !important; border-radius: 8px; padding: 9px 14px; }
+    table.vencimientos { margin-top: 4px; width: 60%; }
+    .vencimientos td { padding: 2px 0; }
+
+    table.totales { border: 1px solid $doc-linea !important; }
+    .totales td { padding: 6px 14px; }
+    .totales tr.sep td { border-top: 1px solid $doc-linea-suave !important; }
+    &.dji-fac .totales tr.total td {
+        background: $doc-marino !important; color: #FFFFFF; padding: 10px 14px;
+    }
+    .totales tr.total .etq-total { font-size: 11px; font-weight: 600; letter-spacing: 2px; }
+    .totales tr.total .importe-total { font-size: 22px; font-weight: 700; text-align: right; white-space: nowrap; }
+
+    .obs-fac { margin-top: 12px; border: 1px dashed #B9C6D3; border-radius: 8px; padding: 8px 14px; }
+    table.verifactu { margin-top: 12px; border-top: 1px solid $doc-linea-suave !important; }
+    .verifactu td { padding-top: 8px; vertical-align: middle; }
+    // La AEAT pide el QR entre 30 y 40 mm de lado
+    .verifactu td.qr { width: 125px; }
+    .verifactu td.qr img { width: 112px; height: 112px; }
+    .verifactu .vf { font-size: 12px; font-weight: 600; }
+
+    // ---------- Rectificativa: mismo esquema, en naranja ----------
+    &.dji-rect {
+        .caja, .totales tr.total td { background: $doc-rect !important; }
+        table.caja-datos { border-top: 1px solid #D49A6A !important; }
+        .fac-tarjetas td.fac-cliente { border-top-color: $doc-rect !important; }
+        .etq-doc { color: $doc-rect-texto; }
+        .fac-lineas tr.grupo .grupo-titulo { color: $doc-rect-texto; }
+        .fac-lineas .importe { color: $doc-rect-texto; }
+        .pago { background: $doc-rect-fondo !important; }
+    }
+    table.franja-rect { margin-bottom: 14px; border: 1px solid $doc-rect !important; }
+    .franja-rect td { background: $doc-rect-fondo !important; padding: 8px 12px; vertical-align: top; }
+    .franja-rect td.marca { width: 6px; padding: 0; background: $doc-rect !important; }
+    .franja-rect .etq-rect { font-size: 10px; font-weight: bold; letter-spacing: 1px; color: $doc-rect-texto; text-transform: uppercase; }
+    .franja-rect .valor { font-size: 13px; font-weight: bold; }
+
+    // ---------- Presupuesto: ligero, en verde ----------
+    .cab-pre { text-align: right; vertical-align: middle; white-space: nowrap; padding-right: 2px; }
+    .pre-titulo { font-size: 28px; font-weight: 600; color: $doc-verde; }
+    .pre-numero { font-size: 15px; font-weight: 600; color: $doc-tinta; }
+    table.pre-meta { border-top: 3px solid $doc-verde-barra !important; border-bottom: 1px solid $doc-linea-suave !important; margin-bottom: 16px; }
+    .pre-meta td { padding: 10px 10px 10px 0; }
+    .pre-meta .valor { font-size: 14px; font-weight: 600; }
+    .pre-meta .verde { color: $doc-verde; font-weight: bold; }
+    .pre-tarjetas { margin-bottom: 16px; }
+    .pre-tarjetas > tbody > tr > td { width: 50%; }
+    .tarjeta-pre { border: 1px dashed #9DBB6B; border-radius: 8px; padding: 10px 14px; }
+    .tarjeta-pre .principal { font-size: 14px; font-weight: bold; }
+    .etq-pre { font-size: 10px; font-weight: bold; letter-spacing: 1px; color: $doc-verde; text-transform: uppercase; margin-bottom: 2px; }
+    .pre-lineas thead th {
+        background: $doc-verde-fondo !important; color: $doc-verde-texto; padding: 7px 6px;
+        font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; text-align: left;
+    }
+    .condiciones { border-left: 3px solid $doc-verde-barra !important; padding: 4px 0 4px 14px; }
+    .totales-pre tr.total td {
+        background: $doc-verde-fondo !important; border-top: 2px solid $doc-verde-barra !important;
+        color: $doc-tinta; padding: 9px 14px; vertical-align: middle;
+    }
+    .totales-pre tr.total .etq-total { color: $doc-verde-texto; font-size: 13px; letter-spacing: 0; }
+    .totales-pre tr.total .importe-total { font-size: 20px; }
+}

@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Cabecera común de los documentos DJI: logo y datos de la empresa -->
+    <template id="dji_cabecera_empresa">
+        <td class="cab-logo">
+            <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" alt="Logo"/>
+        </td>
+        <td class="cab-empresa">
+            <div class="nombre titulo" t-out="company.name"/>
+            <div class="gris">
+                <t t-out="company.street"/><t t-if="company.street2"> <t t-out="company.street2"/></t>
+                · <t t-out="company.zip"/> <t t-out="company.city"/><t t-if="company.state_id"> (<t t-out="company.state_id.name"/>)</t>
+            </div>
+            <div class="gris">
+                <t t-if="company.vat">NIF <t t-out="company.vat"/></t>
+                <t t-if="company.phone"> · <t t-out="company.phone"/></t>
+                <t t-if="company.email"> · <t t-out="company.email"/></t>
+            </div>
+        </td>
+    </template>
+
+    <!-- Factura y factura rectificativa -->
+    <template id="report_factura_documento">
+        <t t-set="company" t-value="o.company_id.sudo()"/>
+        <t t-set="d" t-value="o.dji_factura_datos()"/>
+        <t t-set="rect" t-value="d['rectificativa']"/>
+
+        <div t-attf-class="header o_company_#{company.id}_layout">
+            <div t-attf-class="dji-alb dji-fac #{'dji-rect' if rect else ''}">
+                <table>
+                    <tr>
+                        <t t-call="dji_documentos.dji_cabecera_empresa"/>
+                        <td class="cab-caja">
+                            <div class="caja">
+                                <div class="caja-tipo titulo" t-out="d['titulo']"/>
+                                <div class="caja-numero titulo" t-out="d['numero']"/>
+                                <table class="caja-datos">
+                                    <tr>
+                                        <td>
+                                            <div class="caja-etq">FECHA</div>
+                                            <div class="caja-valor" t-out="d['fecha']"/>
+                                        </td>
+                                        <td>
+                                            <div class="caja-etq" t-out="'ABONO' if rect else 'IMPORTE'"/>
+                                            <div class="caja-valor"><t t-out="d['total']"/> €</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div t-attf-class="article o_company_#{company.id}_layout"
+             t-att-data-oe-model="o._name" t-att-data-oe-id="o.id"
+             t-att-data-oe-lang="o.env.context.get('lang')">
+            <div t-attf-class="dji-alb dji-fac #{'dji-rect' if rect else ''}">
+
+                <table t-if="rect" class="franja-rect">
+                    <tr>
+                        <td class="marca"/>
+                        <td>
+                            <div class="etq-rect">Rectifica a</div>
+                            <div class="valor" t-out="d['origen'] or '—'"/>
+                            <div class="gris" t-if="d['origen_fecha']">de <t t-out="d['origen_fecha']"/></div>
+                        </td>
+                        <td style="width: 60%;">
+                            <div class="etq-rect">Motivo</div>
+                            <div class="valor" t-out="d['motivo'] or '—'"/>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="fac-tarjetas">
+                    <tr>
+                        <td class="fac-cliente">
+                            <div class="etq-doc" t-out="'Cliente' if rect else 'Facturar a'"/>
+                            <div class="principal" t-out="d['cliente'].name"/>
+                            <div t-if="d['cliente'].vat">NIF <t t-out="d['cliente'].vat"/></div>
+                            <div class="gris">
+                                <t t-out="d['direccion'].street"/><t t-if="d['direccion'].street2"> <t t-out="d['direccion'].street2"/></t>
+                                · <t t-out="d['direccion'].zip"/> <t t-out="d['direccion'].city"/><t t-if="d['direccion'].state_id"> (<t t-out="d['direccion'].state_id.name"/>)</t>
+                            </div>
+                        </td>
+                        <td class="fac-info">
+                            <table>
+                                <tr t-if="d['cod_cliente']"><td class="gris">Cód. cliente</td><td class="dato" t-out="d['cod_cliente']"/></tr>
+                                <tr t-if="d['comercial']"><td class="gris">Comercial</td><td class="dato" t-out="d['comercial']"/></tr>
+                                <tr t-if="d['forma_pago']"><td class="gris">Forma de pago</td><td class="dato" t-out="d['forma_pago']"/></tr>
+                                <tr t-if="d['pedidos']"><td class="gris" t-out="'Pedido' if ',' not in d['pedidos'] else 'Pedidos'"/><td class="dato" t-out="d['pedidos']"/></tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="fac-lineas">
+                    <thead>
+                        <tr>
+                            <th style="width: 58px;">Código</th>
+                            <th>Artículo</th>
+                            <th class="num" style="width: 44px;">Cant.</th>
+                            <th class="num" style="width: 60px;">Precio</th>
+                            <th class="num" style="width: 42px;">Dto.</th>
+                            <th class="num" style="width: 40px;">IVA</th>
+                            <th class="num" style="width: 72px;">Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="d['grupos']" t-as="g">
+                            <tr t-if="g['cabecera']" class="grupo">
+                                <td colspan="6">
+                                    <span class="grupo-titulo" t-out="g['cabecera']['titulo']"/>
+                                    <span class="gris" t-if="g['cabecera']['detalle']"> · <t t-out="g['cabecera']['detalle']"/></span>
+                                </td>
+                                <td class="num gris" t-out="g['subtotal']"/>
+                            </tr>
+                            <t t-foreach="g['lineas']" t-as="l">
+                                <tr t-if="l['nota']" t-attf-class="nota #{'seccion' if l['seccion'] else ''}">
+                                    <td/>
+                                    <td colspan="6" t-out="l['nota']"/>
+                                </tr>
+                                <tr t-else="" class="linea">
+                                    <td class="gris" t-out="l['codigo']"/>
+                                    <td class="art"><t t-out="l['nombre']"/><span t-if="l['promo']" class="promo">PROMO</span></td>
+                                    <td class="num cant">
+                                        <t t-out="l['cantidad']"/>
+                                        <div t-if="l['unidad']" class="unidad" t-out="l['unidad']"/>
+                                    </td>
+                                    <td class="num" t-out="l['precio']"/>
+                                    <td class="num gris" t-out="l['dto']"/>
+                                    <td class="num gris" t-out="l['iva']"/>
+                                    <td class="num importe">
+                                        <span t-if="l['promo']" class="promo">PROMO</span>
+                                        <t t-else="" t-out="l['importe']"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </t>
+                    </tbody>
+                </table>
+                <div class="resumen-fac">Precios en euros, sin IVA</div>
+
+                <div class="cierre">
+                    <table>
+                        <tr>
+                            <td class="cierre-izq">
+                                <table class="desglose">
+                                    <tr class="cab">
+                                        <td>Base imponible</td>
+                                        <td class="num">% IVA</td>
+                                        <td class="num">Cuota</td>
+                                    </tr>
+                                    <tr t-foreach="d['impuestos']" t-as="imp">
+                                        <td><t t-out="imp['base']"/> €<span class="gris" t-if="not imp['porcentaje']"> · <t t-out="imp['etiqueta']"/></span></td>
+                                        <td class="num" t-out="imp['porcentaje'] or imp['etiqueta']"/>
+                                        <td class="num"><t t-out="imp['cuota']"/> €</td>
+                                    </tr>
+                                </table>
+
+                                <div class="pago">
+                                    <t t-if="rect">
+                                        <div class="etq-doc">Forma de abono</div>
+                                        <div t-if="d['forma_pago']" t-out="d['forma_pago']"/>
+                                        <div t-else="">Se descontará de su próxima factura o se abonará por transferencia.</div>
+                                    </t>
+                                    <t t-elif="d['giro']">
+                                        <div class="etq-doc">Vencimientos</div>
+                                        <div>
+                                            Se girará<t t-if="d['cuenta_cliente']"> a su cuenta <b t-out="d['cuenta_cliente']"/></t>:
+                                        </div>
+                                        <table class="vencimientos">
+                                            <tr t-foreach="d['vencimientos']" t-as="v">
+                                                <td t-out="v['fecha']"/>
+                                                <td class="num"><t t-out="v['importe']"/> €</td>
+                                            </tr>
+                                        </table>
+                                    </t>
+                                    <t t-else="">
+                                        <div class="etq-doc">Forma de pago</div>
+                                        <div><b>Transferencia</b> indicando el nº de factura</div>
+                                        <div class="gris" t-foreach="d['bancos']" t-as="b"><t t-out="b['banco']"/> <t t-out="b['cuenta']"/></div>
+                                    </t>
+                                </div>
+                            </td>
+                            <td class="cierre-der">
+                                <table class="totales">
+                                    <tr>
+                                        <td class="gris">Base imponible</td>
+                                        <td class="num"><t t-out="d['base']"/> €</td>
+                                    </tr>
+                                    <tr class="sep">
+                                        <td class="gris">Total IVA</td>
+                                        <td class="num"><t t-out="d['total_iva']"/> €</td>
+                                    </tr>
+                                    <tr class="total">
+                                        <td colspan="2">
+                                            <div class="etq-total titulo" t-out="'TOTAL A ABONAR' if rect else 'TOTAL FACTURA'"/>
+                                            <div class="importe-total titulo"><t t-out="d['total']"/> €</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div t-if="not is_html_empty(d['nota'])" class="obs-fac">
+                        <div class="etq-doc">Observaciones</div>
+                        <div class="gris" t-out="d['nota']"/>
+                    </div>
+
+                    <table t-if="d['qr']" class="verifactu">
+                        <tr>
+                            <td class="qr"><img t-att-src="d['qr']" alt="QR VERI*FACTU"/></td>
+                            <td>
+                                <div class="titulo vf">VERI*FACTU</div>
+                                <div class="gris">Factura verificable en la sede electrónica de la AEAT</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div t-attf-class="footer o_company_#{company.id}_layout">
+            <div class="dji-alb">
+                <table class="pie">
+                    <tr>
+                        <td t-out="d['registro']"/>
+                        <td style="text-align: right; white-space: nowrap; width: 90px;">
+                            Página <span class="page"/> / <span class="topage"/>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <!-- Se engancha al informe de facturas de serie (el que usan Imprimir,
+         Enviar, el portal y Copiloto): si la factura pide la plantilla DJI,
+         se pinta esta. -->
+    <template id="report_invoice_dji" inherit_id="account.report_invoice">
+        <xpath expr="//t[@t-call='account.report_invoice_document']" position="after">
+            <t t-elif="o._get_name_invoice_report() == 'dji_documentos.report_factura_documento'"
+               t-call="dji_documentos.report_factura_documento"
+               t-lang="lang"/>
+        </xpath>
+    </template>
+
+</odoo>

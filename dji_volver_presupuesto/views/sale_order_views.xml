@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_volver_presupuesto" model="ir.ui.view">
+        <field name="name">sale.order.form.dji.volver.presupuesto</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_cancel']" position="before">
+                <button string="Volver a presupuesto"
+                        name="action_dji_volver_presupuesto"
+                        type="object"
+                        class="btn-secondary"
+                        groups="stock.group_stock_user"
+                        invisible="state != 'sale'"
+                        confirm="Se cancelarán los traslados pendientes, se pondrán a cero los PICK ya hechos (el stock vuelve al almacén) y el pedido quedará en presupuesto. ¿Continuar?"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
