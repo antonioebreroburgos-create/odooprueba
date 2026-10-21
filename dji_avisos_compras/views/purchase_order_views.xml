@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_dji_avisos" model="ir.ui.view">
+        <field name="name">purchase.order.form.dji.avisos</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_dji_reenviar_aviso" type="object" string="Reenviar WhatsApp al proveedor"
+                        icon="fa-whatsapp" class="btn-secondary"
+                        invisible="state not in ('purchase', 'done')"
+                        confirm="Se volverá a mandar el pedido en PDF por WhatsApp al proveedor. ¿Continuar?"/>
+            </xpath>
+            <xpath expr="//field[@name='partner_ref']" position="after">
+                <field name="dji_aviso_estado" widget="badge" readonly="1"
+                       invisible="state not in ('purchase', 'done')"
+                       decoration-success="dji_aviso_estado == 'recibido'"
+                       decoration-info="dji_aviso_estado == 'enviado'"
+                       decoration-danger="dji_aviso_estado in ('no_recibido', 'error')"
+                       decoration-warning="dji_aviso_estado == 'sin_telefono'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="purchase_order_list_dji_avisos" model="ir.ui.view">
+        <field name="name">purchase.order.list.dji.avisos</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="dji_aviso_estado" widget="badge" optional="show"
+                       decoration-success="dji_aviso_estado == 'recibido'"
+                       decoration-info="dji_aviso_estado == 'enviado'"
+                       decoration-danger="dji_aviso_estado in ('no_recibido', 'error')"
+                       decoration-warning="dji_aviso_estado == 'sin_telefono'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

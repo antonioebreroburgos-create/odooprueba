@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- El secreto (dji_avisos_compras.webhook_secret) se crea a mano en
+         Ajustes → Técnico → Parámetros del sistema; no va en el código. -->
+    <record id="param_webhook_url" model="ir.config_parameter">
+        <field name="key">dji_avisos_compras.webhook_url</field>
+        <field name="value">https://djicomunicacion.netlify.app/.netlify/functions/aviso-compra</field>
+    </record>
+    <record id="param_empresa" model="ir.config_parameter">
+        <field name="key">dji_avisos_compras.empresa</field>
+        <field name="value">DJI</field>
+    </record>
+</odoo>
