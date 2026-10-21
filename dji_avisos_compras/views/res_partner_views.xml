@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- "WhatsApp pedidos" justo debajo del teléfono, en la cabecera de la ficha -->
     <record id="view_partner_form_dji_avisos_compras" model="ir.ui.view">
         <field name="name">res.partner.form.dji.avisos.compras</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[@name='purchase']" position="inside">
-                <field name="dji_whatsapp_pedidos" widget="phone" placeholder="+34 6XX XXX XXX"/>
+            <xpath expr="//div[field[@name='phone']]" position="after">
+                <div class="d-flex align-items-baseline w-md-50">
+                    <i class="fa fa-fw me-1 fa-whatsapp text-success" title="WhatsApp pedidos (compras)"/>
+                    <field name="dji_whatsapp_pedidos" class="w-100" widget="phone"
+                           placeholder="WhatsApp pedidos (compras)"/>
+                </div>
             </xpath>
         </field>
     </record>
