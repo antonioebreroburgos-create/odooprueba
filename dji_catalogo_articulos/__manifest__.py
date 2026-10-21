@@ -1,6 +1,6 @@
 {
     'name': 'DJI · Catálogo de artículos',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
     'summary': 'Completar etiquetas, foto y ficha técnica de los artículos al recibir la mercancía',
     'description': """
 Al recibir mercancía, administración completa los artículos del albarán:

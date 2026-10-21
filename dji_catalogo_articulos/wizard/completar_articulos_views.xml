@@ -51,6 +51,7 @@
                             </group>
                         </group>
                         <group string="Etiquetas de catálogo">
+                            <field name="tags_producto" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'producto'}" placeholder="Hamburguesas, Croquetas, Canelones…"/>
                             <field name="tags_momento" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'momento'}"/>
                             <field name="tags_origen" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'origen'}"/>
                             <field name="tags_preparacion" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" context="{'dji_grupo_codigo': 'preparacion'}"/>

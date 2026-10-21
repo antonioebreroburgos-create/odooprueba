@@ -20,6 +20,10 @@ class ProductTemplate(models.Model):
         help='La foto tal cual se subió, antes de pasar por "Fondo blanco". Sirve para volver a ella.',
     )
 
+    tags_producto = fields.Many2many(
+        'product.tag', string='Producto', domain=dominio_grupo('producto'),
+        compute='_compute_tags_grupos', inverse='_inverse_tags_producto',
+    )
     tags_momento = fields.Many2many(
         'product.tag', string='Momento', domain=dominio_grupo('momento'),
         compute='_compute_tags_grupos', inverse='_inverse_tags_momento',
@@ -63,6 +67,9 @@ class ProductTemplate(models.Model):
         for p in self:
             resto = p.product_tag_ids.filtered(lambda t: not es_del_grupo(t, codigo))
             p.product_tag_ids = resto | p[f'tags_{codigo}']
+
+    def _inverse_tags_producto(self):
+        self._inverse_tags_grupo('producto')
 
     def _inverse_tags_momento(self):
         self._inverse_tags_grupo('momento')

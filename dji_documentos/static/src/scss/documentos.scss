@@ -46,6 +46,9 @@ $doc-fondo: #F4F8FB;
     .fac-info table td { padding: 2px 0; }
     .fac-info td.dato { text-align: right; font-weight: 600; }
     .fac-tarjetas .principal { font-size: 14px; font-weight: bold; }
+    .entrega-fac { margin-top: 7px; padding-top: 6px; border-top: 1px solid $doc-linea !important; }
+    .entrega-local { font-size: 12px; font-weight: bold; }
+    .fac-lineas tr.grupo .grupo-local { font-weight: bold; color: $doc-tinta; }
 
     .fac-lineas, .pre-lineas { margin-top: 4px; }
     .fac-lineas thead th {

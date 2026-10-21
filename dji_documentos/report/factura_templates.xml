@@ -85,6 +85,15 @@
                                 <t t-out="d['direccion'].street"/><t t-if="d['direccion'].street2"> <t t-out="d['direccion'].street2"/></t>
                                 · <t t-out="d['direccion'].zip"/> <t t-out="d['direccion'].city"/><t t-if="d['direccion'].state_id"> (<t t-out="d['direccion'].state_id.name"/>)</t>
                             </div>
+                            <div t-if="d['entrega']" class="entrega-fac">
+                                <div class="etq-doc">Establecimiento / entrega</div>
+                                <div class="entrega-local" t-if="d['entrega']['local']" t-out="d['entrega']['local']"/>
+                                <div class="gris" t-out="d['entrega']['direccion']"/>
+                            </div>
+                            <div t-elif="d['varias_entregas']" class="entrega-fac">
+                                <div class="etq-doc">Establecimiento / entrega</div>
+                                <div class="gris">Varios: se indica en cada albarán</div>
+                            </div>
                         </td>
                         <td class="fac-info">
                             <table>
@@ -114,6 +123,7 @@
                             <tr t-if="g['cabecera']" class="grupo">
                                 <td colspan="6">
                                     <span class="grupo-titulo" t-out="g['cabecera']['titulo']"/>
+                                    <span class="grupo-local" t-if="g['cabecera'].get('local')"> · <t t-out="g['cabecera']['local']"/></span>
                                     <span class="gris" t-if="g['cabecera']['detalle']"> · <t t-out="g['cabecera']['detalle']"/></span>
                                 </td>
                                 <td class="num gris" t-out="g['subtotal']"/>

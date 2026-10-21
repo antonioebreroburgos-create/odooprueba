@@ -1,6 +1,6 @@
 {
     'name': 'DJI · Factura, rectificativa y presupuesto',
-    'version': '19.0.1.2.1',
+    'version': '19.0.1.3.0',
     'summary': 'Facturas, facturas rectificativas y presupuestos con el diseño corporativo de DJI',
     'description': 'Misma familia visual que el albarán de DJI (dji_albaran), pero distinguible: '
                    'factura con bloque azul oscuro y líneas agrupadas por albarán, rectificativa en '

@@ -9,6 +9,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="grupo_id"/>
                 <field name="name"/>
+                <field name="complementaria_ids" widget="many2many_tags" optional="show"/>
                 <field name="color" widget="color"/>
             </list>
         </field>

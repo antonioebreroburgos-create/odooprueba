@@ -98,6 +98,10 @@ class CatalogoCompletarLinea(models.TransientModel):
     nombre = fields.Char(string='Descripción')
     imagen = fields.Image(string='Foto', max_width=1920, max_height=1920)
     imagen_original = fields.Image(string='Foto original', max_width=1920, max_height=1920)
+    tags_producto = fields.Many2many(
+        'product.tag', 'dji_catalogo_linea_producto_rel', 'linea_id', 'tag_id',
+        string='Producto', domain=dominio_grupo('producto'),
+    )
     tags_momento = fields.Many2many(
         'product.tag', 'dji_catalogo_linea_momento_rel', 'linea_id', 'tag_id',
         string='Momento', domain=dominio_grupo('momento'),
