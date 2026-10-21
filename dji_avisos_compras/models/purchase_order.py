@@ -13,6 +13,7 @@ _logger = logging.getLogger(__name__)
 
 TIMEOUT = 15  # segundos: la confirmación del pedido no debe quedarse colgada
 HORAS_RECORDATORIO = 24
+CLAVE_SEGUIMIENTO = 'dji_avisos_compras.seguimiento'
 
 
 class PurchaseOrder(models.Model):
@@ -192,43 +193,118 @@ class PurchaseOrder(models.Model):
         return True
 
     # ------------------------------------------------------------
-    # Mensajes del proveedor en el historial (correos que entran en Odoo)
+    # Mensajes en el historial: del proveedor (correo) y de compañeros
     # ------------------------------------------------------------
     def _message_post_after_hook(self, message, msg_values):
         res = super()._message_post_after_hook(message, msg_values)
         if self.env.context.get('dji_desde_whatsapp') or len(self) != 1:
             return res
         try:
-            self._dji_avisar_mensaje_proveedor(message)
+            self._dji_avisar_mensaje(message)
         except Exception:  # un aviso no puede impedir que se guarde el mensaje
-            _logger.exception('Aviso de mensaje del proveedor en %s', self.name)
+            _logger.exception('Aviso de mensaje en %s', self.name)
         return res
 
-    def _dji_avisar_mensaje_proveedor(self, message):
+    @staticmethod
+    def _dji_texto_mensaje(message):
+        texto = ' '.join(html2plaintext(message.body or '').split())
+        if len(texto) > 280:
+            texto = texto[:277] + '…'
+        return texto, len(message.attachment_ids)
+
+    def _dji_avisar_mensaje(self, message):
         if message.message_type not in ('email', 'comment'):
-            return
-        # Notas internas escritas en Odoo: no avisan. Los correos que entran
-        # de fuera (message_type 'email') avisan siempre, aunque Odoo los
-        # guarde como nota por responder a una nota.
-        if message.message_type == 'comment' and (message.subtype_id.internal or message.is_internal):
-            return
+            return  # cambios de estado, seguimiento automático, etc.
         autor = message.author_id
         if autor and autor == self.env.ref('base.partner_root', raise_if_not_found=False):
             return  # OdooBot / procesos automáticos
-        interno = autor and autor.with_context(active_test=False).user_ids.filtered(lambda u: not u.share)
-        if interno:
-            return  # mensajes de nuestros usuarios: no avisan
-        if self.state not in ('sent', 'to approve', 'purchase', 'done'):
-            return
-        texto = html2plaintext(message.body or '').strip()
-        texto = ' '.join(texto.split())
-        if len(texto) > 280:
-            texto = texto[:277] + '…'
-        adjuntos = len(message.attachment_ids)
+        texto, adjuntos = self._dji_texto_mensaje(message)
         if not texto and not adjuntos:
+            return
+        usuario = autor and autor.with_context(active_test=False).user_ids.filtered(lambda u: not u.share)[:1]
+        if usuario:
+            # Un compañero escribe en el pedido (mensaje o nota): se avisa al
+            # comprador, salvo que lo haya escrito él mismo.
+            extra = f' (+{adjuntos} adjunto{"s" if adjuntos > 1 else ""})' if adjuntos else ''
+            self._dji_seguimiento(f'💬 «{texto or "sin texto"}»{extra}', usuario=usuario)
+            return
+        # Escribe alguien de fuera (el proveedor, normalmente por correo).
+        # Las notas internas no cuentan; los correos que entran, siempre.
+        if message.message_type == 'comment' and (message.subtype_id.internal or message.is_internal):
+            return
+        if self.state not in ('sent', 'to approve', 'purchase', 'done'):
             return
         self._dji_webhook(dict(
             self._dji_datos_base(), evento='mensaje_proveedor',
             texto=texto, adjuntos=adjuntos,
             autor=autor.name or message.email_from or self.partner_id.name,
         ))
+
+    # ------------------------------------------------------------
+    # Seguimiento: modificaciones del pedido hechas por otros usuarios
+    # ------------------------------------------------------------
+    def write(self, vals):
+        cancelados = self.browse()
+        if vals.get('state') == 'cancel':
+            cancelados = self.filtered(lambda o: o.state in ('purchase', 'done'))
+        res = super().write(vals)
+        for order in cancelados:
+            order._dji_seguimiento('🚫 Ha CANCELADO el pedido', comprobar_estado=False)
+        return res
+
+    def _dji_seguimiento_activo(self, usuario, comprobar_estado=True):
+        self.ensure_one()
+        if self.env.context.get('dji_sin_seguimiento'):
+            return False
+        if comprobar_estado and self.state not in ('purchase', 'done'):
+            return False
+        return bool(
+            self.dji_aviso_estado  # solo pedidos que ya se avisaron al proveedor
+            and self.user_id
+            and usuario and usuario != self.user_id  # lo que hace el comprador no se le avisa
+            and not usuario._is_superuser() and not usuario.share
+        )
+
+    def _dji_seguimiento(self, texto, usuario=None, comprobar_estado=True):
+        """Apunta un cambio o mensaje. Al guardar (fin de la transacción) se
+        manda UN solo WhatsApp al comprador por pedido con todo lo apuntado."""
+        usuario = usuario or self.env.user
+        datos = self.env.cr.precommit.data.get(CLAVE_SEGUIMIENTO)
+        for order in self:
+            if not order._dji_seguimiento_activo(usuario, comprobar_estado):
+                continue
+            if datos is None:
+                datos = self.env.cr.precommit.data[CLAVE_SEGUIMIENTO] = {}
+                self.env.cr.precommit.add(self._dji_seguimiento_preparar)
+            apunte = datos.setdefault(order.id, {'autor': usuario.name, 'textos': []})
+            if texto not in apunte['textos']:
+                apunte['textos'].append(texto)
+
+    def _dji_seguimiento_preparar(self):
+        """Justo antes del commit: monta los avisos. Se envían después del
+        commit, para no avisar de cambios que al final no se guardan."""
+        datos = self.env.cr.precommit.data.get(CLAVE_SEGUIMIENTO) or {}
+        cfg = self._dji_parametros()
+        if not datos or not cfg['url'] or not cfg['secreto']:
+            return
+        envios = []
+        for order in self.env['purchase.order'].sudo().browse(list(datos)).exists():
+            apunte = datos[order.id]
+            texto = f"{apunte['autor']}: " + ' · '.join(apunte['textos'])
+            if len(texto) > 600:
+                texto = texto[:597] + '…'
+            envios.append(dict(order._dji_datos_base(), evento='aviso_comprador',
+                               texto=texto, empresa=cfg['empresa']))
+
+        def enviar():
+            for payload in envios:
+                try:
+                    res = requests.post(cfg['url'], json=payload, timeout=TIMEOUT,
+                                        headers={'x-webhook-secret': cfg['secreto']})
+                    if res.status_code >= 300:
+                        _logger.warning('Seguimiento compra %s: %s %s', payload['pedido'], res.status_code, res.text[:200])
+                except Exception:
+                    _logger.exception('Seguimiento compra %s', payload['pedido'])
+
+        if envios:
+            self.env.cr.postcommit.add(enviar)

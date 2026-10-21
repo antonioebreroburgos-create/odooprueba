@@ -2,7 +2,7 @@ import hmac
 import json
 import logging
 
-from odoo import http
+from odoo import SUPERUSER_ID, http
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class DjiAvisosCompras(http.Controller):
             return request.make_json_response({'error': 'Unauthorized'}, status=401)
         try:
             datos = json.loads(request.httprequest.get_data(as_text=True) or '{}')
-            pedido = request.env['purchase.order'].sudo().browse(int(datos.get('pedido_id') or 0)).exists()
+            pedido = request.env['purchase.order'].with_user(SUPERUSER_ID).browse(int(datos.get('pedido_id') or 0)).exists()
             if not pedido:
                 return request.make_json_response({'error': 'Pedido no encontrado'}, status=404)
             pedido.dji_aviso_registrar_respuesta(
