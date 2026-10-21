@@ -1,6 +1,6 @@
 {
     'name': 'DJI · Avisos de compras por WhatsApp',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.1.0',
     'summary': 'Avisa por WhatsApp al proveedor al confirmar una compra y nos informa de todo lo que responda',
     'description': (
         'Al confirmar un pedido de compra se envía un WhatsApp (plantilla con el PDF del pedido y '

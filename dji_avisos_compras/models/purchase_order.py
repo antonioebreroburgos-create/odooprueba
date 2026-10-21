@@ -72,8 +72,17 @@ class PurchaseOrder(models.Model):
             'empresa_nombre': self.company_id.name,
             'fecha_entrega': fields.Date.to_date(entrega).strftime('%d/%m/%Y') if entrega else 'a convenir',
             'lineas': len(self.order_line.filtered(lambda l: not l.display_type)),
+            'callback_url': self._dji_callback_url(),
             'total': round(self.amount_total, 2),
         }
+
+    def _dji_callback_url(self):
+        """Dirección de ESTE Odoo (pruebas o producción) a la que Copiloto
+        devuelve las respuestas del proveedor."""
+        param = self.env['ir.config_parameter'].sudo()
+        base = (param.get_param('dji_avisos_compras.callback_base_url')
+                or param.get_param('web.base.url') or '').rstrip('/')
+        return f'{base}/dji_avisos_compras/respuesta'
 
     def _dji_telefono_proveedor(self):
         self.ensure_one()
