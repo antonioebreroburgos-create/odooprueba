@@ -6,6 +6,7 @@ from odoo import models
 # plantillas de serie, que otros módulos de la instalación ya modifican.
 FACTURAS = {'account.report_invoice', 'account.report_invoice_with_payments'}
 PRESUPUESTOS = {'sale.report_saleorder', 'sale.report_saleorder_raw'}
+COMPRAS = {'purchase.report_purchaseorder', 'purchase.report_purchasequotation'}
 
 
 class IrActionsReport(models.Model):
@@ -20,4 +21,8 @@ class IrActionsReport(models.Model):
                 template = 'dji_documentos.report_factura'
             elif template in PRESUPUESTOS and modelo == 'sale.order':
                 template = 'dji_documentos.report_presupuesto'
+            elif template in COMPRAS and modelo == 'purchase.order':
+                # La "Solicitud de presupuesto" de serie va sin precios; se respeta
+                values = dict(values, dji_sin_precios=template == 'purchase.report_purchasequotation')
+                template = 'dji_documentos.report_compra'
         return super()._render_template(template, values)

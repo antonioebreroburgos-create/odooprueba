@@ -1,4 +1,4 @@
-// Factura, rectificativa y presupuesto DJI. Usa la base de .dji-alb
+// Factura, rectificativa, presupuesto y pedido de compra DJI. Usa la base de .dji-alb
 // (dji_albaran: fuentes, reseteo de bordes, cabecera, pie) y añade lo suyo.
 // Motor wkhtmltopdf: sin flex ni grid, todo con tablas.
 $doc-azul: #04538E;
@@ -11,6 +11,11 @@ $doc-verde-barra: #85BF09;
 $doc-verde-fondo: #F1F7E6;
 $doc-verde-texto: #3E6400;
 $doc-naranja: #E99138;
+$doc-morado: #5B3A8C;
+$doc-morado-barra: #8E6CC9;
+$doc-morado-fondo: #F3EFFA;
+$doc-morado-texto: #4A2F75;
+$doc-rojo: #B3261E;
 $doc-tinta: #1E2A36;
 $doc-gris: #4A5866;
 $doc-gris-claro: #5B6875;
@@ -143,4 +148,51 @@ $doc-fondo: #F4F8FB;
     }
     .totales-pre tr.total .etq-total { color: $doc-verde-texto; font-size: 13px; letter-spacing: 0; }
     .totales-pre tr.total .importe-total { font-size: 20px; }
+
+    // ---------- Pedido de compra: en morado, con la entrega destacada ----------
+    .cab-com { width: 236px; vertical-align: middle; text-align: right; }
+    .com-caja { border: 2px solid $doc-morado !important; border-radius: 10px; padding: 9px 14px; text-align: right; }
+    .com-tipo { font-size: 10px; font-weight: 600; letter-spacing: 2px; color: $doc-morado; text-transform: uppercase; }
+    .com-numero { font-size: 20px; font-weight: 700; color: $doc-tinta; margin-top: 2px; white-space: nowrap; }
+    table.com-anulado { margin-bottom: 12px; }
+    .com-anulado td {
+        background: #FBEAEA !important; border: 1px solid $doc-rojo !important; color: $doc-rojo;
+        padding: 8px 12px; font-size: 13px; font-weight: bold; letter-spacing: 1px; text-align: center;
+    }
+    table.com-meta { margin-bottom: 16px; border-bottom: 1px solid $doc-linea-suave !important; }
+    .com-meta td.dato { padding: 9px 12px 9px 14px; vertical-align: top; }
+    .com-meta td.dato:first-child { padding-left: 0; }
+    .com-meta .valor { font-size: 14px; font-weight: 600; white-space: nowrap; }
+    .com-meta td.destacado { background: $doc-morado !important; color: #FFFFFF; padding: 9px 14px; border-radius: 8px; }
+    .com-meta td.destacado .etq { color: #E4DAF5; }
+    .com-meta td.destacado .valor { font-size: 16px; font-weight: bold; }
+    .com-meta + table { margin-top: 0; }
+    .nota-fechas { font-size: 10px; font-weight: normal; margin-left: 4px; }
+    .com-tarjetas { margin-bottom: 16px; }
+    .com-tarjetas td.com-proveedor, .com-tarjetas td.com-entrega {
+        width: 49%; vertical-align: top; padding: 10px 14px; border-top: 3px solid $doc-morado-barra !important;
+        background: $doc-morado-fondo !important; border-radius: 0 0 8px 8px;
+    }
+    .com-tarjetas td.com-entrega { background: #FFFFFF !important; border: 1px solid $doc-linea !important; border-top: 3px solid $doc-morado !important; }
+    .com-tarjetas td.com-hueco { width: 2%; }
+    .com-tarjetas .principal { font-size: 14px; font-weight: bold; }
+    .etq-com { font-size: 10px; font-weight: bold; letter-spacing: 1px; color: $doc-morado; text-transform: uppercase; margin-bottom: 2px; }
+    .com-lineas { margin-top: 4px; }
+    .com-lineas thead th {
+        border-bottom: 2px solid $doc-morado !important; color: $doc-morado-texto; padding: 7px 6px;
+        font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; text-align: left;
+    }
+    .com-lineas thead th.num { text-align: right; }
+    .com-lineas tr.linea td { padding: 6px 6px; border-bottom: 1px solid $doc-linea-suave !important; vertical-align: middle; }
+    .com-lineas tr { page-break-inside: avoid; }
+    .com-lineas td:first-child, .com-lineas th:first-child { padding-left: 10px; }
+    .com-lineas td:last-child, .com-lineas th:last-child { padding-right: 10px; }
+    .com-lineas .art { font-size: 12px; font-weight: 600; }
+    .com-lineas .cant { font-weight: bold; font-size: 12px; }
+    .com-lineas .unidad { font-size: 10px; color: $doc-gris-claro; }
+    .com-lineas .ref-prov { font-size: 10px; color: $doc-morado-texto; font-weight: 600; }
+    .com-lineas .importe { font-weight: 600; }
+    .instrucciones { border-left: 3px solid $doc-morado-barra !important; padding: 4px 0 4px 14px; }
+    .instrucciones div { margin-bottom: 2px; }
+    .totales-com tr.total td { background: $doc-morado !important; color: #FFFFFF; padding: 10px 14px; vertical-align: middle; }
 }

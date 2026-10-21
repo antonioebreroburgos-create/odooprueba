@@ -13,4 +13,12 @@
         <field name="paperformat_id" ref="dji_albaran.paperformat_albaran_dji"/>
         <field name="print_report_name">(object.state in ('draft', 'sent') and 'Presupuesto %s - %s' or 'Pedido %s - %s') % (object.name.replace('/', '_'), object.partner_id.commercial_partner_id.name or '')</field>
     </record>
+    <record id="purchase.action_report_purchase_order" model="ir.actions.report">
+        <field name="paperformat_id" ref="dji_albaran.paperformat_albaran_dji"/>
+        <field name="print_report_name">(object.state in ('draft', 'sent', 'to approve') and 'Solicitud de presupuesto %s - %s' or 'Pedido de compra %s - %s') % (object.name.replace('/', '_'), object.partner_id.commercial_partner_id.name or '')</field>
+    </record>
+    <record id="purchase.report_purchase_quotation" model="ir.actions.report">
+        <field name="paperformat_id" ref="dji_albaran.paperformat_albaran_dji"/>
+        <field name="print_report_name">'Solicitud de presupuesto %s - %s' % (object.name.replace('/', '_'), object.partner_id.commercial_partner_id.name or '')</field>
+    </record>
 </odoo>
