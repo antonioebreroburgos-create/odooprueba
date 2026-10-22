@@ -166,7 +166,7 @@ class StockPicking(models.Model):
 
         lineas = []
         base = 0.0
-        impuestos = {}  # etiqueta -> importe
+        impuestos = {}  # etiqueta -> [base, cuota]
         unidades = 0.0
         promos = 0
         for move in self.move_ids.filtered(lambda m: m.state != 'cancel').sorted(lambda m: (m.sequence, m.id)):
@@ -212,7 +212,9 @@ class StockPicking(models.Model):
                                 if t.amount_type != 'percent':
                                     continue
                                 etiqueta = t.invoice_label or t.name
-                                impuestos[etiqueta] = impuestos.get(etiqueta, 0.0) + importe * t.amount / 100.0
+                                acumulado = impuestos.setdefault(etiqueta, [0.0, 0.0])
+                                acumulado[0] += importe
+                                acumulado[1] += importe * t.amount / 100.0
                                 porcentajes.append(_cantidad(t.amount))
                         signo = '−' if devolucion else ''
                         fila.update({
@@ -226,7 +228,7 @@ class StockPicking(models.Model):
             {'banco': b.bank_id.name or '', 'cuenta': b.acc_number}
             for b in self.company_id.partner_id.bank_ids
         ]
-        total_impuestos = sum(impuestos.values())
+        total_impuestos = sum(v[1] for v in impuestos.values())
 
         # Firma del cliente hecha en Odoo (botón Firmar del albarán de salida)
         con_firma = salida if salida.signature else (self if self.signature else self.env['stock.picking'])
@@ -255,7 +257,9 @@ class StockPicking(models.Model):
             'lineas': lineas,
             'resumen': resumen,
             'base': signo + _num(base),
-            'impuestos': [{'etiqueta': k, 'importe': signo + _num(v)} for k, v in impuestos.items()],
+            # Cada impuesto con su base: "IVA 10 %  ·  base 320,00 €  →  32,00 €"
+            'impuestos': [{'etiqueta': k, 'base': signo + _num(v[0]), 'importe': signo + _num(v[1])}
+                          for k, v in impuestos.items()],
             'total': signo + _num(base + total_impuestos),
             'bancos': bancos,
             'firma': con_firma.signature if con_firma else False,

@@ -164,7 +164,10 @@
                                         <td class="num"><t t-out="d['base']"/> €</td>
                                     </tr>
                                     <tr t-foreach="d['impuestos']" t-as="imp" class="sep">
-                                        <td class="gris" t-out="imp['etiqueta']"/>
+                                        <td class="gris">
+                                            <t t-out="imp['etiqueta']"/>
+                                            <div class="base-imp">sobre <t t-out="imp['base']"/> €</div>
+                                        </td>
                                         <td class="num"><t t-out="imp['importe']"/> €</td>
                                     </tr>
                                     <tr t-attf-class="total #{'total-devolucion' if d['devolucion'] else ''}">

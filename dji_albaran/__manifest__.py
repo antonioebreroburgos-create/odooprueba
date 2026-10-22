@@ -1,6 +1,6 @@
 {
     'name': 'DJI · Albarán de entrega',
-    'version': '19.0.1.3.0',
+    'version': '19.0.1.4.0',
     'summary': 'Albarán de entrega con el diseño corporativo de DJI (sustituye al de serie)',
     'description': 'Albarán de entrega rediseñado para Distribuciones Joaquín Infante: número del traslado de salida (ALB/OUT), lote y caducidad por línea, precios del pedido, comercial, observaciones y recibí conforme. Opción por cliente de albarán sin precios.',
     'author': 'DJI',

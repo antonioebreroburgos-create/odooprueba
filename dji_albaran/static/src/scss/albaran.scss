@@ -82,6 +82,8 @@ $dji-fondo: #F4F8FB;
     table.totales { border: 1px solid $dji-linea !important; }
     .totales td { padding: 6px 14px; }
     .totales tr.sep td { border-top: 1px solid $dji-linea-suave !important; }
+    .totales .base-imp { font-size: 10px; color: $dji-gris-claro; margin-top: 1px; }
+    .totales tr.sep td.num { vertical-align: top; }
     .totales tr.total td { background: $dji-azul !important; color: #FFFFFF; padding: 9px 14px; vertical-align: middle; }
     .totales tr.total .etq-total { font-size: 13px; font-weight: 600; white-space: nowrap; }
     .totales tr.total .importe-total { font-size: 20px; font-weight: 700; }
