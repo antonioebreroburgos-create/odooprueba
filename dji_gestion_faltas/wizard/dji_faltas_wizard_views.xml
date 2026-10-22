@@ -5,7 +5,7 @@
         <field name="model">dji.faltas.wizard</field>
         <field name="arch" type="xml">
             <form string="Gestionar faltas">
-                <field name="order_id" invisible="1"/>
+                <field name="order_id" invisible="1" force_save="1"/>
                 <p>
                     Indica la cantidad en falta de cada producto. La cantidad
                     "Disponible" es solo orientativa (stock de Odoo); si el
@@ -13,11 +13,11 @@
                 </p>
                 <field name="line_ids">
                     <list editable="bottom" create="0" delete="0">
-                        <field name="order_line_id" column_invisible="1"/>
-                        <field name="product_id" column_invisible="1"/>
-                        <field name="descripcion" readonly="1"/>
-                        <field name="qty_pedida" readonly="1"/>
-                        <field name="qty_disponible" readonly="1"/>
+                        <field name="order_line_id" column_invisible="1" force_save="1"/>
+                        <field name="product_id" column_invisible="1" force_save="1"/>
+                        <field name="descripcion" readonly="1" force_save="1"/>
+                        <field name="qty_pedida" readonly="1" force_save="1"/>
+                        <field name="qty_disponible" readonly="1" force_save="1"/>
                         <field name="qty_falta" force_save="1"/>
                     </list>
                 </field>

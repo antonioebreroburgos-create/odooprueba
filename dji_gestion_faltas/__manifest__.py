@@ -1,7 +1,7 @@
 {
     "name": "DJI Gestión de Faltas",
     "summary": """Pasa las faltas de un presupuesto a un presupuesto FALTAS y avisa al comercial""",
-    "version": "19.0.1.0.6",
+    "version": "19.0.1.0.7",
     "author": "DJI",
     "company": "Distribuciones Joaquín Infante",
     "category": "Sales",
