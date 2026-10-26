@@ -6,16 +6,13 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
 
-            <!-- Botón/banner de alerta en el header: visible si el picking está assigned y sin fotos de carga -->
-            <xpath expr="//header" position="inside">
-                <button
-                    string="⚠️ Sin fotos de carga"
-                    type="object"
-                    name="action_dummy"
-                    class="btn-danger"
-                    invisible="dji_num_fotos_carga != 0 or state not in ('assigned', 'done')"
-                    title="Este albarán fue validado sin fotografiar la carga"
-                />
+            <!-- Banner de alerta en el header: visible si el picking está assigned/done y sin fotos de carga -->
+            <xpath expr="//header" position="after">
+                <div class="alert alert-danger mb-0 rounded-0"
+                     invisible="dji_num_fotos_carga != 0 or state not in ('assigned', 'done')"
+                     style="padding: 6px 16px; font-size: 13px;">
+                    ⚠️ Este albarán no tiene fotos de carga registradas
+                </div>
             </xpath>
 
             <!-- Tab de Registro de Entrega -->
