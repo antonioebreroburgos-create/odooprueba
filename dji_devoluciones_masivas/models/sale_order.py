@@ -163,7 +163,11 @@ class SaleOrder(models.Model):
                     'motivo': self._dev_motivo_faltante(product, solicitado[product], qty_base),
                 })
         for v in faltantes:
-            v.setdefault('price_unit', self._dev_precio_sugerido(self.env['product.product'].browse(v['product_id'])))
+            prod = self.env['product.product'].browse(v['product_id'])
+            v.setdefault('price_unit', self._dev_precio_sugerido(prod))
+            # Lote sugerido (el último que se le entregó): así "Abonar igualmente" no se queda sin lote
+            if prod.is_storable and prod.tracking != 'none':
+                v.setdefault('lot_id', self._dev_lote_sugerido(prod).id or False)
         self.env['dji.devolucion.faltante'].create([dict(v, devolucion_id=self.id) for v in faltantes])
 
         self.dev_estado = 'propuesta'
@@ -393,6 +397,29 @@ class SaleOrder(models.Model):
             motivos.append(_('No quedan más ventas entregadas y facturadas en el periodo.'))
         return ' '.join(motivos)
 
+    def _dev_lote_sugerido(self, product):
+        """Lote más probable de lo que devuelve el cliente:
+        1) el último lote de ese producto entregado a este cliente (sin fecha límite: vale para
+           mercancía de principio de temporada); 2) si no hay, el lote más reciente del producto."""
+        ml = self.env['stock.move.line'].search([
+            ('product_id', '=', product.id),
+            ('lot_id', '!=', False),
+            ('state', '=', 'done'),
+            ('location_dest_id.usage', '=', 'customer'),
+            ('move_id.partner_id', 'child_of', self.partner_id.commercial_partner_id.id),
+        ], order='date desc, id desc', limit=1)
+        if not ml:
+            ml = self.env['stock.move.line'].search([
+                ('product_id', '=', product.id),
+                ('lot_id', '!=', False),
+                ('state', '=', 'done'),
+                ('location_dest_id.usage', '=', 'customer'),
+                ('picking_id.partner_id', 'child_of', self.partner_id.commercial_partner_id.id),
+            ], order='date desc, id desc', limit=1)
+        if ml:
+            return ml.lot_id
+        return self.env['stock.lot'].search([('product_id', '=', product.id)], order='id desc', limit=1)
+
     def _dev_precio_sugerido(self, product):
         """Último precio neto (unidad base) vendido a este cliente; si no hay, precio de tarifa."""
         sl = self.env['sale.order.line'].search([
@@ -462,7 +489,13 @@ class SaleOrder(models.Model):
         errores = []
         for f in extras:
             if f.product_id.is_storable and f.product_id.tracking != 'none' and not f.lot_id:
-                errores.append(_('%s: indica el lote que devuelve el cliente.', f.product_id.display_name))
+                # Sin lote indicado: se usa el sugerido; solo falla si el producto no tiene ningún lote
+                lote = self._dev_lote_sugerido(f.product_id)
+                if lote:
+                    f.lot_id = lote
+                else:
+                    errores.append(_('%s: no hay ningún lote de este producto; créalo e indícalo en la línea.',
+                                     f.product_id.display_name))
             if f.lot_id and f.lot_id.product_id != f.product_id:
                 errores.append(_('%s: el lote %s no es de este producto.', f.product_id.display_name, f.lot_id.name))
             if f.price_unit < 0:

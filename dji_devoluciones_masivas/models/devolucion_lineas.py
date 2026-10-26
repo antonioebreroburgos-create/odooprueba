@@ -55,3 +55,10 @@ class DjiDevolucionFaltante(models.Model):
     def _compute_subtotal(self):
         for f in self:
             f.subtotal = f.cantidad * f.price_unit
+
+    @api.onchange('incluir')
+    def _onchange_incluir_lote(self):
+        """Al marcar "Abonar igualmente" en un producto con lote, se propone el último lote entregado."""
+        for f in self:
+            if f.incluir and not f.lot_id and f.product_id.is_storable and f.product_id.tracking != 'none' and f.devolucion_id:
+                f.lot_id = f.devolucion_id._dev_lote_sugerido(f.product_id)

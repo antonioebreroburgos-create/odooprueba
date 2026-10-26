@@ -81,8 +81,9 @@
                             <field name="motivo" readonly="1"/>
                             <field name="incluir" widget="boolean_toggle"/>
                             <field name="tracking" column_invisible="1"/>
+                            <!-- Sin "required": el lote viene sugerido y, si se deja vacío, se pone al ejecutar
+                                 (antes bloqueaba el guardado con "Faltan campos obligatorios") -->
                             <field name="lot_id" invisible="not incluir or tracking == 'none'"
-                                   required="incluir and tracking != 'none'"
                                    context="{'default_product_id': product_id}"/>
                             <field name="price_unit" invisible="not incluir"/>
                             <field name="subtotal" invisible="not incluir" sum="Total"/>
