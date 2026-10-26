@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_dji_gps" model="ir.ui.view">
+        <field name="name">res.partner.form.dji.gps</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Añadir bloque GPS en la pestaña de Ventas y Compras,
+                 justo antes del cierre del grupo de información general -->
+            <xpath expr="//page[@name='sales_purchases']" position="before">
+                <page string="📍 GPS" name="dji_gps">
+                    <group string="Coordenadas GPS (app repartidor)">
+                        <group>
+                            <field name="dji_latitud" string="Latitud"/>
+                            <field name="dji_longitud" string="Longitud"/>
+                        </group>
+                        <group>
+                            <field name="dji_tiene_gps" string="GPS registrado" readonly="1"/>
+                            <field name="dji_maps_url" string="Google Maps" widget="url"
+                                   invisible="not dji_tiene_gps"/>
+                        </group>
+                    </group>
+                    <div invisible="dji_tiene_gps"
+                         style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;font-size:13px;color:#856404">
+                        ⚠️ Sin coordenadas GPS. El repartidor debe capturar la ubicación desde la app en su próxima visita, o introducirlas manualmente aquí.
+                    </div>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- Vista de lista de partners: añadir indicador GPS -->
+    <record id="view_partner_tree_dji_gps" model="ir.ui.view">
+        <field name="name">res.partner.tree.dji.gps</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="inside">
+                <field name="dji_tiene_gps" string="GPS" optional="show"
+                       widget="boolean"
+                       decoration-success="dji_tiene_gps == True"
+                       decoration-muted="dji_tiene_gps == False"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

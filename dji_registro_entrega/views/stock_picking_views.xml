@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_dji_registro_entrega" model="ir.ui.view">
+        <field name="name">stock.picking.form.dji.registro.entrega</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Botón/banner de alerta en el header: visible si el picking está assigned y sin fotos de carga -->
+            <xpath expr="//header" position="inside">
+                <button
+                    string="⚠️ Sin fotos de carga"
+                    type="object"
+                    name="action_dummy"
+                    class="btn-danger"
+                    invisible="dji_num_fotos_carga != 0 or state not in ('assigned', 'done')"
+                    title="Este albarán fue validado sin fotografiar la carga"
+                />
+            </xpath>
+
+            <!-- Tab de Registro de Entrega -->
+            <xpath expr="//notebook" position="inside">
+                <page string="📷 Registro de entrega" name="dji_registro_entrega">
+
+                    <!-- SECCIÓN: Fotos de carga -->
+                    <group string="Fotos de carga (almacén)">
+                        <group>
+                            <field name="dji_num_fotos_carga" string="Nº fotos" readonly="1"/>
+                            <field name="dji_ia_estado" string="Estado IA" readonly="1"
+                                   widget="badge"
+                                   decoration-danger="dji_ia_estado in ('sin_fotos', 'incidencia')"
+                                   decoration-warning="dji_ia_estado == 'pendiente'"
+                                   decoration-success="dji_ia_estado == 'ok'"/>
+                        </group>
+                        <group>
+                            <field name="dji_ia_resumen" string="Análisis IA" readonly="1" widget="text"/>
+                        </group>
+
+                        <field name="dji_fotos_carga" readonly="1" nolabel="1">
+                            <list>
+                                <field name="fecha_subida" string="Fecha"/>
+                                <field name="subida_por" string="Subida por"/>
+                                <field name="url" string="URL" widget="url"/>
+                                <field name="ia_estado" string="Estado IA"
+                                       widget="badge"
+                                       decoration-danger="ia_estado == 'incidencia'"
+                                       decoration-warning="ia_estado == 'pendiente'"
+                                       decoration-success="ia_estado == 'ok'"/>
+                                <field name="ia_analisis" string="Análisis" optional="show"/>
+                            </list>
+                        </field>
+                    </group>
+
+                    <!-- SECCIÓN: Fotos de entrega -->
+                    <group string="Fotos de entrega (cliente)">
+                        <group>
+                            <field name="dji_num_fotos_entrega" string="Nº fotos" readonly="1"/>
+                        </group>
+
+                        <field name="dji_fotos_entrega" readonly="1" nolabel="1">
+                            <list>
+                                <field name="fecha_subida" string="Fecha"/>
+                                <field name="subida_por" string="Subida por"/>
+                                <field name="url" string="URL" widget="url"/>
+                            </list>
+                        </field>
+                    </group>
+
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
