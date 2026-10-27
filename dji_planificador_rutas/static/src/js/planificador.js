@@ -22,8 +22,8 @@ function storageKey(uid) {
 function loadFiltro(uid) {
     try {
         const raw = localStorage.getItem(storageKey(uid));
-        return raw ? JSON.parse(raw) : { rutaId: '', dia: '', zona: '', modoDia: 'tags' };
-    } catch { return { rutaId: '', dia: '', zona: '', modoDia: 'tags' }; }
+        return raw ? JSON.parse(raw) : { rutaId: '', dia: '', zonaId: 0, modoDia: 'tags' };
+    } catch { return { rutaId: '', dia: '', zonaId: 0, modoDia: 'tags' }; }
 }
 
 function saveFiltro(uid, data) {
@@ -51,10 +51,10 @@ class DjiPlanificador extends Component {
         <!-- Filtro zona -->
         <select class="dji-plan-select" t-on-change="onZonaChange"
                 t-if="state.zonas.length > 0">
-            <option value="">— Todas las zonas —</option>
-            <t t-foreach="state.zonas" t-as="z" t-key="z.key">
-                <option t-att-value="z.key" t-att-selected="state.zona == z.key">
-                    <t t-esc="z.label"/> (<t t-esc="z.count"/>)
+            <option value="0">— Todas las zonas —</option>
+            <t t-foreach="state.zonas" t-as="z" t-key="z.id">
+                <option t-att-value="z.id" t-att-selected="state.zonaId == z.id">
+                    <t t-esc="z.name"/> (<t t-esc="z.count"/>)
                 </option>
             </t>
         </select>
@@ -88,7 +88,7 @@ class DjiPlanificador extends Component {
 
     <div class="dji-plan-stats" t-if="!state.loading">
         <strong><t t-esc="state.pedidos.length"/></strong> presupuestos
-        <t t-if="state.zona"> · <span class="dji-badge-zona"><t t-esc="zonaLabel"/></span></t>
+        <t t-if="state.zonaId"> · <span class="dji-badge-zona"><t t-esc="zonaLabel"/></span></t>
         <t t-if="state.dia"> · <t t-esc="diaLabel"/></t>
         <t t-if="state.modoDia === 'partner'">
             <span class="dji-badge-modo"> · días por cliente</span>
@@ -128,8 +128,8 @@ class DjiPlanificador extends Component {
                             <td class="dji-partner-name"><t t-esc="p.partner"/></td>
                             <td class="dji-city"><t t-esc="p.city"/></td>
                             <td class="dji-zona-cell">
-                                <t t-if="p.zona">
-                                    <span class="dji-badge-zona-sm"><t t-esc="zonaKeyToLabel(p.zona)"/></span>
+                                <t t-if="p.zona_name">
+                                    <span class="dji-badge-zona-sm"><t t-esc="p.zona_name"/></span>
                                 </t>
                             </td>
                             <td class="dji-importe">
@@ -186,14 +186,13 @@ class DjiPlanificador extends Component {
             rutas: [],
             rutaId: '',
             dia: '',
-            zona: '',
-            modoDia: 'tags',   // 'tags' = etiquetas pedido, 'partner' = días del cliente
+            zonaId: 0,
+            modoDia: 'tags',
             pedidos: [],
             loading: true,
             counts: {},
-            zonas: [],         // zonas con pedidos activos
+            zonas: [],
         });
-        this._zonasMap = {};   // key → label (para mostrar en la tabla)
         onMounted(() => this.init());
     }
 
@@ -202,11 +201,8 @@ class DjiPlanificador extends Component {
     }
 
     get zonaLabel() {
-        return this._zonasMap[this.state.zona] || this.state.zona || '';
-    }
-
-    zonaKeyToLabel(key) {
-        return this._zonasMap[key] || key || '';
+        const z = this.state.zonas.find(z => z.id == this.state.zonaId);
+        return z ? z.name : '';
     }
 
     formatImporte(amount, currency) {
@@ -230,21 +226,15 @@ class DjiPlanificador extends Component {
         const filtro = loadFiltro(uid);
         this.state.rutaId = filtro.rutaId || '';
         this.state.dia    = filtro.dia    || '';
-        this.state.zona   = filtro.zona   || '';
+        this.state.zonaId = filtro.zonaId || 0;
         this.state.modoDia = filtro.modoDia || 'tags';
 
-        // Cargar rutas y zonas en paralelo
         const [rutas, zonas] = await Promise.all([
             this.orm.call('dji.planificador.rutas', 'get_rutas', [], {}),
             this.orm.call('dji.planificador.rutas', 'get_zonas', [], {}).catch(() => []),
         ]);
         this.state.rutas = rutas;
         this.state.zonas = zonas;
-        // Construir mapa zona key→label
-        this._zonasMap = {};
-        for (const z of zonas) {
-            this._zonasMap[z.key] = z.label;
-        }
 
         await this.cargarPedidos();
     }
@@ -252,21 +242,20 @@ class DjiPlanificador extends Component {
     async cargarPedidos() {
         this.state.loading = true;
         const pedidos = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [], {
-            ruta_id: this.state.rutaId || null,
-            dia:     this.state.dia    || null,
-            zona:    this.state.zona   || null,
+            ruta_id:  this.state.rutaId || null,
+            dia:      this.state.dia    || null,
+            zona_id:  this.state.zonaId || null,
             modo_dia: this.state.modoDia,
         });
         this.state.pedidos = pedidos;
 
-        // Calcular counts por día
         const counts = {};
         let base = pedidos;
         if (this.state.dia) {
             base = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [], {
-                ruta_id: this.state.rutaId || null,
-                dia:     null,
-                zona:    this.state.zona   || null,
+                ruta_id:  this.state.rutaId || null,
+                dia:      null,
+                zona_id:  this.state.zonaId || null,
                 modo_dia: this.state.modoDia,
             });
         }
@@ -287,7 +276,7 @@ class DjiPlanificador extends Component {
         saveFiltro(uid, {
             rutaId: this.state.rutaId,
             dia:    this.state.dia,
-            zona:   this.state.zona,
+            zonaId: this.state.zonaId,
             modoDia: this.state.modoDia,
         });
     }
@@ -299,7 +288,7 @@ class DjiPlanificador extends Component {
     }
 
     async onZonaChange(ev) {
-        this.state.zona = ev.target.value || '';
+        this.state.zonaId = ev.target.value ? parseInt(ev.target.value) : 0;
         this._guardarFiltro();
         await this.cargarPedidos();
     }
