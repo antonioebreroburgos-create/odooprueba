@@ -1,0 +1,33 @@
+/* DJI - Avisos en pedido de venta */
+.dji-aviso-entrega,
+.dji-aviso-minimo {
+    margin-top: 4px;
+    margin-bottom: 4px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dji-aviso-entrega {
+    background: #cff4fc;
+    border: 1px solid #9eeaf9;
+    color: #055160;
+}
+
+.dji-aviso-minimo {
+    background: #fff3cd;
+    border: 1px solid #ffda6a;
+    color: #664d03;
+}
+
+.dji-aviso-text {
+    font-weight: 500;
+}
+
+/* Ficha de cliente - días de servicio */
+.o_field_boolean_toggle .o_toggle_button {
+    /* Mantener estilo nativo de Odoo 19 */
+}

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Añadir pestaña "Entrega DJI" en la ficha de cliente -->
+    <record id="view_partner_form_dji_entrega" model="ir.ui.view">
+        <field name="name">res.partner.form.dji_entrega</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <!-- Insertar pestaña nueva al final de las pestañas -->
+            <xpath expr="//page[last()]" position="after">
+                <page string="Entrega DJI" name="dji_entrega">
+                    <group>
+                        <group string="Zona de reparto">
+                            <field name="dji_zona" widget="selection"/>
+                        </group>
+                        <group string="Días de servicio">
+                            <field name="dji_dia_lunes" widget="boolean_toggle"/>
+                            <field name="dji_dia_martes" widget="boolean_toggle"/>
+                            <field name="dji_dia_miercoles" widget="boolean_toggle"/>
+                            <field name="dji_dia_jueves" widget="boolean_toggle"/>
+                            <field name="dji_dia_viernes" widget="boolean_toggle"/>
+                            <field name="dji_dia_sabado" widget="boolean_toggle"/>
+                            <field name="dji_dia_domingo" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

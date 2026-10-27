@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Añadir campos de aviso en el formulario de pedido de venta -->
+    <record id="view_sale_order_form_dji_avisos" model="ir.ui.view">
+        <field name="name">sale.order.form.dji_avisos</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Insertar avisos justo debajo del campo de cliente (partner_id) -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <!-- Aviso de próxima entrega -->
+                <div class="alert alert-info dji-aviso-entrega" role="alert"
+                     attrs="{'invisible': [('dji_aviso_entrega', '=', False)]}">
+                    <i class="fa fa-truck me-1"/>
+                    <field name="dji_aviso_entrega" readonly="1" nolabel="1"
+                           class="dji-aviso-text"/>
+                </div>
+                <!-- Aviso de pedido mínimo -->
+                <div class="alert alert-warning dji-aviso-minimo" role="alert"
+                     attrs="{'invisible': [('dji_aviso_minimo', '=', False)]}">
+                    <i class="fa fa-exclamation-triangle me-1"/>
+                    <field name="dji_aviso_minimo" readonly="1" nolabel="1"
+                           class="dji-aviso-text"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

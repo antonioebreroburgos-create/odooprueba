@@ -22,13 +22,13 @@ function storageKey(uid) {
 function loadFiltro(uid) {
     try {
         const raw = localStorage.getItem(storageKey(uid));
-        return raw ? JSON.parse(raw) : { rutaId: '', dia: '' };
-    } catch { return { rutaId: '', dia: '' }; }
+        return raw ? JSON.parse(raw) : { rutaId: '', dia: '', zona: '', modoDia: 'tags' };
+    } catch { return { rutaId: '', dia: '', zona: '', modoDia: 'tags' }; }
 }
 
-function saveFiltro(uid, rutaId, dia) {
+function saveFiltro(uid, data) {
     try {
-        localStorage.setItem(storageKey(uid), JSON.stringify({ rutaId, dia }));
+        localStorage.setItem(storageKey(uid), JSON.stringify(data));
     } catch {}
 }
 
@@ -37,6 +37,8 @@ class DjiPlanificador extends Component {
 <div id="dji_planificador_root">
     <div class="dji-plan-header">
         <h2>🗓️ Planificador de Rutas</h2>
+
+        <!-- Filtro repartidor -->
         <select class="dji-plan-select" t-on-change="onRutaChange">
             <option value="">— Todos los repartidores —</option>
             <t t-foreach="state.rutas" t-as="r" t-key="r.id">
@@ -45,6 +47,25 @@ class DjiPlanificador extends Component {
                 </option>
             </t>
         </select>
+
+        <!-- Filtro zona -->
+        <select class="dji-plan-select" t-on-change="onZonaChange"
+                t-if="state.zonas.length > 0">
+            <option value="">— Todas las zonas —</option>
+            <t t-foreach="state.zonas" t-as="z" t-key="z.key">
+                <option t-att-value="z.key" t-att-selected="state.zona == z.key">
+                    <t t-esc="z.label"/> (<t t-esc="z.count"/>)
+                </option>
+            </t>
+        </select>
+
+        <!-- Modo día -->
+        <label class="dji-modo-label">
+            <input type="checkbox"
+                   t-att-checked="state.modoDia === 'partner'"
+                   t-on-change="onModoDiaChange"/>
+            Días por cliente
+        </label>
     </div>
 
     <div class="dji-dias-bar">
@@ -67,8 +88,11 @@ class DjiPlanificador extends Component {
 
     <div class="dji-plan-stats" t-if="!state.loading">
         <strong><t t-esc="state.pedidos.length"/></strong> presupuestos
-        <t t-if="state.rutaId"> · repartidor seleccionado</t>
+        <t t-if="state.zona"> · <span class="dji-badge-zona"><t t-esc="zonaLabel"/></span></t>
         <t t-if="state.dia"> · <t t-esc="diaLabel"/></t>
+        <t t-if="state.modoDia === 'partner'">
+            <span class="dji-badge-modo"> · días por cliente</span>
+        </t>
     </div>
 
     <div class="dji-spinner" t-if="state.loading">⏳ Cargando...</div>
@@ -84,6 +108,7 @@ class DjiPlanificador extends Component {
                         <th>Pedido</th>
                         <th>Cliente</th>
                         <th>Ciudad</th>
+                        <th>Zona</th>
                         <th>Importe</th>
                         <th>Día</th>
                         <th>Repartidor</th>
@@ -102,6 +127,11 @@ class DjiPlanificador extends Component {
                             </td>
                             <td class="dji-partner-name"><t t-esc="p.partner"/></td>
                             <td class="dji-city"><t t-esc="p.city"/></td>
+                            <td class="dji-zona-cell">
+                                <t t-if="p.zona">
+                                    <span class="dji-badge-zona-sm"><t t-esc="zonaKeyToLabel(p.zona)"/></span>
+                                </t>
+                            </td>
                             <td class="dji-importe">
                                 <t t-esc="formatImporte(p.amount, p.currency)"/>
                             </td>
@@ -156,15 +186,27 @@ class DjiPlanificador extends Component {
             rutas: [],
             rutaId: '',
             dia: '',
+            zona: '',
+            modoDia: 'tags',   // 'tags' = etiquetas pedido, 'partner' = días del cliente
             pedidos: [],
             loading: true,
             counts: {},
+            zonas: [],         // zonas con pedidos activos
         });
+        this._zonasMap = {};   // key → label (para mostrar en la tabla)
         onMounted(() => this.init());
     }
 
     get diaLabel() {
         return DIAS.find(d => d.key === this.state.dia)?.label || '';
+    }
+
+    get zonaLabel() {
+        return this._zonasMap[this.state.zona] || this.state.zona || '';
+    }
+
+    zonaKeyToLabel(key) {
+        return this._zonasMap[key] || key || '';
     }
 
     formatImporte(amount, currency) {
@@ -184,59 +226,100 @@ class DjiPlanificador extends Component {
 
     async init() {
         this.state.loading = true;
-        // Cargar filtro guardado para este usuario (uid desde session_info global)
         const uid = odoo.session_info?.uid || odoo.uid || 'default';
         const filtro = loadFiltro(uid);
         this.state.rutaId = filtro.rutaId || '';
-        this.state.dia = filtro.dia || '';
+        this.state.dia    = filtro.dia    || '';
+        this.state.zona   = filtro.zona   || '';
+        this.state.modoDia = filtro.modoDia || 'tags';
 
-        const rutas = await this.orm.call('dji.planificador.rutas', 'get_rutas', [], {});
+        // Cargar rutas y zonas en paralelo
+        const [rutas, zonas] = await Promise.all([
+            this.orm.call('dji.planificador.rutas', 'get_rutas', [], {}),
+            this.orm.call('dji.planificador.rutas', 'get_zonas', [], {}).catch(() => []),
+        ]);
         this.state.rutas = rutas;
+        this.state.zonas = zonas;
+        // Construir mapa zona key→label
+        this._zonasMap = {};
+        for (const z of zonas) {
+            this._zonasMap[z.key] = z.label;
+        }
+
         await this.cargarPedidos();
     }
 
     async cargarPedidos() {
         this.state.loading = true;
-        const pedidos = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [],
-            { ruta_id: this.state.rutaId || null, dia: this.state.dia || null });
+        const pedidos = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [], {
+            ruta_id: this.state.rutaId || null,
+            dia:     this.state.dia    || null,
+            zona:    this.state.zona   || null,
+            modo_dia: this.state.modoDia,
+        });
         this.state.pedidos = pedidos;
 
         // Calcular counts por día
         const counts = {};
         let base = pedidos;
         if (this.state.dia) {
-            // Para los totales de los botones, cargar sin filtro de día
-            base = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [],
-                { ruta_id: this.state.rutaId || null, dia: null });
+            base = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [], {
+                ruta_id: this.state.rutaId || null,
+                dia:     null,
+                zona:    this.state.zona   || null,
+                modo_dia: this.state.modoDia,
+            });
         }
         for (const d of DIAS) {
+            const campo = this.state.modoDia === 'partner' ? 'partner_dias' : 'dia_tags';
             if (d.key === 'sin_dia') {
-                counts[d.key] = base.filter(p => !p.dia_tags || p.dia_tags.length === 0).length;
+                counts[d.key] = base.filter(p => !(p[campo] || []).length).length;
             } else {
-                counts[d.key] = base.filter(p => (p.dia_tags || []).includes(d.key)).length;
+                counts[d.key] = base.filter(p => (p[campo] || []).includes(d.key)).length;
             }
         }
         this.state.counts = counts;
         this.state.loading = false;
     }
 
+    _guardarFiltro() {
+        const uid = odoo.session_info?.uid || odoo.uid || 'default';
+        saveFiltro(uid, {
+            rutaId: this.state.rutaId,
+            dia:    this.state.dia,
+            zona:   this.state.zona,
+            modoDia: this.state.modoDia,
+        });
+    }
+
     async onRutaChange(ev) {
         this.state.rutaId = ev.target.value ? parseInt(ev.target.value) : '';
-        const uid = odoo.session_info?.uid || odoo.uid || 'default';
-        saveFiltro(uid, this.state.rutaId, this.state.dia);
+        this._guardarFiltro();
+        await this.cargarPedidos();
+    }
+
+    async onZonaChange(ev) {
+        this.state.zona = ev.target.value || '';
+        this._guardarFiltro();
+        await this.cargarPedidos();
+    }
+
+    async onModoDiaChange(ev) {
+        this.state.modoDia = ev.target.checked ? 'partner' : 'tags';
+        this._guardarFiltro();
         await this.cargarPedidos();
     }
 
     async setDia(dia) {
         this.state.dia = dia;
-        const uid = odoo.session_info?.uid || odoo.uid || 'default';
-        saveFiltro(uid, this.state.rutaId, this.state.dia);
+        this._guardarFiltro();
         await this.cargarPedidos();
     }
 
     async onDiaChange(ev, orderId) {
         const dia = ev.target.value;
-        await this.orm.call('dji.planificador.rutas', 'set_dia_pedido', [], { order_id: orderId, dia_nuevo: dia });
+        await this.orm.call('dji.planificador.rutas', 'set_dia_pedido', [],
+            { order_id: orderId, dia_nuevo: dia });
         this.flashSaved('flash_dia_' + orderId);
         const p = this.state.pedidos.find(x => x.id === orderId);
         if (p) {
@@ -258,7 +341,8 @@ class DjiPlanificador extends Component {
 
     async onRutaPedidoChange(ev, orderId) {
         const rutaId = ev.target.value ? parseInt(ev.target.value) : null;
-        await this.orm.call('dji.planificador.rutas', 'set_ruta_pedido', [], { order_id: orderId, ruta_id: rutaId });
+        await this.orm.call('dji.planificador.rutas', 'set_ruta_pedido', [],
+            { order_id: orderId, ruta_id: rutaId });
         this.flashSaved('flash_ruta_' + orderId);
         const p = this.state.pedidos.find(x => x.id === orderId);
         if (p) p.ruta_ids = rutaId ? [rutaId] : [];

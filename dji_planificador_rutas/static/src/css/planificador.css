@@ -27,8 +27,26 @@
     border-radius: 6px;
     font-size: 14px;
     background: white;
-    min-width: 220px;
+    min-width: 200px;
     cursor: pointer;
+}
+.dji-modo-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #495057;
+    cursor: pointer;
+    user-select: none;
+    padding: 7px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: white;
+}
+.dji-modo-label input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
 }
 .dji-dias-bar {
     display: flex;
@@ -112,6 +130,33 @@
     color: #6c757d;
     font-size: 13px;
     white-space: nowrap;
+}
+.dji-zona-cell {
+    white-space: nowrap;
+}
+.dji-badge-zona {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #0a58ca;
+    border: 1px solid #b6d4fe;
+    border-radius: 10px;
+    padding: 2px 9px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.dji-badge-zona-sm {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #0a58ca;
+    border: 1px solid #b6d4fe;
+    border-radius: 8px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.dji-badge-modo {
+    color: #6f42c1;
+    font-style: italic;
 }
 .dji-importe {
     font-weight: 700;
