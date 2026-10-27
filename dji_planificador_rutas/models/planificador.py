@@ -25,6 +25,7 @@ class DjiPlanificadorRutas(models.TransientModel):
         ('sin_dia', 'Sin día'),
     ], string='Día')
 
+    @api.model
     def get_pedidos(self, ruta_id=None, dia=None):
         """Devuelve presupuestos (draft/sent) filtrados por ruta y/o día"""
         domain = [('state', 'in', ['draft', 'sent'])]
