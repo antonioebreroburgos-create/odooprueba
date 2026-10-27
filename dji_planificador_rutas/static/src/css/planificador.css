@@ -108,6 +108,11 @@
     font-weight: 600;
     color: #1a1a2e;
 }
+.dji-city {
+    color: #6c757d;
+    font-size: 13px;
+    white-space: nowrap;
+}
 .dji-importe {
     font-weight: 700;
     color: #198754;

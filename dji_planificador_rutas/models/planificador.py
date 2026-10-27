@@ -1,12 +1,28 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
-import json
 
 DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 DIAS_LABEL = {
     'lunes': 'Lunes', 'martes': 'Martes', 'miercoles': 'Miércoles',
     'jueves': 'Jueves', 'viernes': 'Viernes', 'sabado': 'Sábado', 'domingo': 'Domingo',
 }
+
+# Etiquetas que excluyen el pedido del planificador (normalizado sin tildes, mayúsculas)
+TAGS_EXCLUIR = [
+    'faltas',
+    'devolucion',
+    'no tratar. ppto en estudio',
+    'no tratar',
+]
+
+def _norm(s):
+    return s.lower().strip() \
+        .replace('é','e').replace('è','e').replace('ê','e') \
+        .replace('á','a').replace('à','a').replace('â','a') \
+        .replace('ó','o').replace('ò','o').replace('ô','o') \
+        .replace('í','i').replace('ì','i').replace('î','i') \
+        .replace('ú','u').replace('ù','u').replace('û','u') \
+        .replace('ñ','n')
 
 
 class DjiPlanificadorRutas(models.TransientModel):
@@ -26,25 +42,23 @@ class DjiPlanificadorRutas(models.TransientModel):
     ], string='Día')
 
     @api.model
-    def get_pedidos(self, ruta_id=None, dia=None):  # args posicionales desde JS
-        """Devuelve presupuestos (draft/sent) filtrados por ruta y/o día"""
+    def get_pedidos(self, ruta_id=None, dia=None):
+        """Devuelve presupuestos (draft/sent) filtrados por ruta y/o día, excluyendo etiquetas especiales"""
         domain = [('state', 'in', ['draft', 'sent'])]
         if ruta_id:
             domain.append(('route_ids', 'in', [int(ruta_id)]))
 
-        orders = self.env['sale.order'].search(domain, order='partner_id asc')
-
-        # Filtrar por día via etiquetas
-        DIAS_NORM = {d.lower().replace('é', 'e').replace('á', 'a').replace('ó', 'o')
-                     .replace('í', 'i').replace('ú', 'u'): d for d in DIAS}
+        orders = self.env['sale.order'].search(domain, order='partner_id asc, name asc')
 
         result = []
         for o in orders:
-            tag_names = [t.name.lower().strip()
-                         .replace('é', 'e').replace('á', 'a').replace('ó', 'o')
-                         .replace('í', 'i').replace('ú', 'u')
-                         for t in o.so_tag_ids]
-            dia_tags = [t for t in tag_names if t in DIAS_NORM]
+            tag_norms = [_norm(t.name) for t in o.so_tag_ids]
+
+            # Excluir pedidos con etiquetas prohibidas
+            if any(tn in TAGS_EXCLUIR for tn in tag_norms):
+                continue
+
+            dia_tags = [tn for tn in tag_norms if tn in DIAS]
 
             if dia == 'sin_dia' and dia_tags:
                 continue
@@ -52,10 +66,15 @@ class DjiPlanificadorRutas(models.TransientModel):
                 continue
 
             rutas = o.route_ids
+            # Ciudad: usar dirección de entrega si es diferente al cliente principal
+            shipping = o.partner_shipping_id
+            city = (shipping.city or o.partner_id.city or '').strip()
+
             result.append({
                 'id': o.id,
                 'name': o.name,
                 'partner': o.partner_id.name or '',
+                'city': city,
                 'amount': o.amount_total,
                 'currency': o.currency_id.symbol or '€',
                 'tags': [t.name for t in o.so_tag_ids],
@@ -69,15 +88,19 @@ class DjiPlanificadorRutas(models.TransientModel):
 
     @api.model
     def get_rutas(self):
-        """Devuelve todas las rutas que tienen presupuestos activos"""
+        """Devuelve todas las rutas que tienen presupuestos activos (excluyendo etiquetas especiales)"""
         rutas = self.env['stock.route'].search([])
-        # Solo rutas que tienen al menos un presupuesto
         result = []
         for r in rutas:
-            count = self.env['sale.order'].search_count([
+            # Contar pedidos válidos (sin etiquetas excluidas)
+            candidates = self.env['sale.order'].search([
                 ('state', 'in', ['draft', 'sent']),
                 ('route_ids', 'in', [r.id]),
             ])
+            count = sum(
+                1 for o in candidates
+                if not any(_norm(t.name) in TAGS_EXCLUIR for t in o.so_tag_ids)
+            )
             if count > 0:
                 result.append({'id': r.id, 'name': r.name, 'count': count})
         return result
@@ -93,14 +116,11 @@ class DjiPlanificadorRutas(models.TransientModel):
 
         # Quitar todas las etiquetas de día existentes
         tags_a_quitar = order.so_tag_ids.filtered(
-            lambda t: t.name.lower().strip()
-            .replace('é', 'e').replace('á', 'a').replace('ó', 'o')
-            .replace('í', 'i').replace('ú', 'u') in DIAS
+            lambda t: _norm(t.name) in DIAS
         )
         order.so_tag_ids = [(3, t.id) for t in tags_a_quitar]
 
         if dia_nuevo and dia_nuevo != 'sin_dia':
-            # Buscar o crear etiqueta del nuevo día
             label = DIAS_LABEL.get(dia_nuevo, dia_nuevo.capitalize())
             tag = Tag.search([('name', '=ilike', label)], limit=1)
             if not tag:
@@ -116,18 +136,15 @@ class DjiPlanificadorRutas(models.TransientModel):
         if not order:
             return {'error': 'Pedido no encontrado'}
 
-        # Obtener todas las rutas actuales que NO son de reparto
-        # (conservamos otras rutas que no sean las de repartidores)
         todas_rutas_reparto = self.env['stock.route'].search([]).ids
         otras_rutas = order.route_ids.filtered(lambda r: r.id not in todas_rutas_reparto)
 
         if ruta_id:
-            order.route_ids = [(5, 0, 0)]  # limpiar todas
+            order.route_ids = [(5, 0, 0)]
             for r in otras_rutas:
                 order.route_ids = [(4, r.id)]
             order.route_ids = [(4, int(ruta_id))]
         else:
-            # Sin ruta — quitar todas las rutas de reparto
             order.route_ids = [(5, 0, 0)]
             for r in otras_rutas:
                 order.route_ids = [(4, r.id)]

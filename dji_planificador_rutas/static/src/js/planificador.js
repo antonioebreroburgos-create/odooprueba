@@ -15,6 +15,23 @@ const DIAS = [
     { key: 'sin_dia',   label: 'Sin día' },
 ];
 
+function storageKey(uid) {
+    return `dji_planificador_filtro_${uid}`;
+}
+
+function loadFiltro(uid) {
+    try {
+        const raw = localStorage.getItem(storageKey(uid));
+        return raw ? JSON.parse(raw) : { rutaId: '', dia: '' };
+    } catch { return { rutaId: '', dia: '' }; }
+}
+
+function saveFiltro(uid, rutaId, dia) {
+    try {
+        localStorage.setItem(storageKey(uid), JSON.stringify({ rutaId, dia }));
+    } catch {}
+}
+
 class DjiPlanificador extends Component {
     static template = xml`
 <div id="dji_planificador_root">
@@ -66,6 +83,7 @@ class DjiPlanificador extends Component {
                     <tr>
                         <th>Pedido</th>
                         <th>Cliente</th>
+                        <th>Ciudad</th>
                         <th>Importe</th>
                         <th>Día</th>
                         <th>Repartidor</th>
@@ -83,6 +101,7 @@ class DjiPlanificador extends Component {
                                 </a>
                             </td>
                             <td class="dji-partner-name"><t t-esc="p.partner"/></td>
+                            <td class="dji-city"><t t-esc="p.city"/></td>
                             <td class="dji-importe">
                                 <t t-esc="formatImporte(p.amount, p.currency)"/>
                             </td>
@@ -131,6 +150,7 @@ class DjiPlanificador extends Component {
 
     setup() {
         this.orm = useService('orm');
+        this.user = useService('user');
         this.dias = DIAS;
         this.diasSinSinDia = DIAS.filter(d => d.key !== 'sin_dia');
         this.state = useState({
@@ -155,14 +175,22 @@ class DjiPlanificador extends Component {
     otrasEtiquetas(p) {
         const DIAS_KEYS = DIAS.map(d => d.key);
         return (p.tags || []).filter(t => {
-            const norm = t.toLowerCase().replace(/[éèê]/g,'e').replace(/[áàâ]/g,'a')
-                .replace(/[óòô]/g,'o').replace(/[íìî]/g,'i').replace(/[úùû]/g,'u').trim();
+            const norm = t.toLowerCase()
+                .replace(/[éèê]/g,'e').replace(/[áàâ]/g,'a')
+                .replace(/[óòô]/g,'o').replace(/[íìî]/g,'i')
+                .replace(/[úùû]/g,'u').replace(/ñ/g,'n').trim();
             return !DIAS_KEYS.includes(norm);
         });
     }
 
     async init() {
         this.state.loading = true;
+        // Cargar filtro guardado para este usuario
+        const uid = this.user.userId;
+        const filtro = loadFiltro(uid);
+        this.state.rutaId = filtro.rutaId || '';
+        this.state.dia = filtro.dia || '';
+
         const rutas = await this.orm.call('dji.planificador.rutas', 'get_rutas', [], {});
         this.state.rutas = rutas;
         await this.cargarPedidos();
@@ -176,23 +204,17 @@ class DjiPlanificador extends Component {
 
         // Calcular counts por día
         const counts = {};
+        let base = pedidos;
+        if (this.state.dia) {
+            // Para los totales de los botones, cargar sin filtro de día
+            base = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [],
+                { ruta_id: this.state.rutaId || null, dia: null });
+        }
         for (const d of DIAS) {
             if (d.key === 'sin_dia') {
-                counts[d.key] = pedidos.filter(p => !p.dia_tags || p.dia_tags.length === 0).length;
+                counts[d.key] = base.filter(p => !p.dia_tags || p.dia_tags.length === 0).length;
             } else {
-                counts[d.key] = pedidos.filter(p => (p.dia_tags || []).includes(d.key)).length;
-            }
-        }
-        // Recalcular counts SIN filtro de día para mostrar totales reales
-        if (this.state.dia) {
-            const todos = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [],
-                { ruta_id: this.state.rutaId || null, dia: null });
-            for (const d of DIAS) {
-                if (d.key === 'sin_dia') {
-                    counts[d.key] = todos.filter(p => !p.dia_tags || p.dia_tags.length === 0).length;
-                } else {
-                    counts[d.key] = todos.filter(p => (p.dia_tags || []).includes(d.key)).length;
-                }
+                counts[d.key] = base.filter(p => (p.dia_tags || []).includes(d.key)).length;
             }
         }
         this.state.counts = counts;
@@ -201,11 +223,13 @@ class DjiPlanificador extends Component {
 
     async onRutaChange(ev) {
         this.state.rutaId = ev.target.value ? parseInt(ev.target.value) : '';
+        saveFiltro(this.user.userId, this.state.rutaId, this.state.dia);
         await this.cargarPedidos();
     }
 
     async setDia(dia) {
         this.state.dia = dia;
+        saveFiltro(this.user.userId, this.state.rutaId, this.state.dia);
         await this.cargarPedidos();
     }
 
@@ -213,14 +237,15 @@ class DjiPlanificador extends Component {
         const dia = ev.target.value;
         await this.orm.call('dji.planificador.rutas', 'set_dia_pedido', [], { order_id: orderId, dia_nuevo: dia });
         this.flashSaved('flash_dia_' + orderId);
-        // Actualizar local
         const p = this.state.pedidos.find(x => x.id === orderId);
         if (p) {
             const DIAS_KEYS = DIAS.map(d => d.key);
             p.dia_tags = dia ? [dia] : [];
             p.tags = p.tags.filter(t => {
-                const norm = t.toLowerCase().replace(/[éèê]/g,'e').replace(/[áàâ]/g,'a')
-                    .replace(/[óòô]/g,'o').replace(/[íìî]/g,'i').replace(/[úùû]/g,'u').trim();
+                const norm = t.toLowerCase()
+                    .replace(/[éèê]/g,'e').replace(/[áàâ]/g,'a')
+                    .replace(/[óòô]/g,'o').replace(/[íìî]/g,'i')
+                    .replace(/[úùû]/g,'u').replace(/ñ/g,'n').trim();
                 return !DIAS_KEYS.includes(norm);
             });
             if (dia) {
@@ -246,7 +271,6 @@ class DjiPlanificador extends Component {
     }
 }
 
-// Registrar como acción cliente (Odoo 19: pasar el Component directamente)
 registry.category('actions').add('dji_planificador_rutas', DjiPlanificador);
 
 export { DjiPlanificador };
