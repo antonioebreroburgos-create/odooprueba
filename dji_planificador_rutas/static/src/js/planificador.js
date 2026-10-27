@@ -150,7 +150,6 @@ class DjiPlanificador extends Component {
 
     setup() {
         this.orm = useService('orm');
-        this.user = useService('user');
         this.dias = DIAS;
         this.diasSinSinDia = DIAS.filter(d => d.key !== 'sin_dia');
         this.state = useState({
@@ -185,8 +184,8 @@ class DjiPlanificador extends Component {
 
     async init() {
         this.state.loading = true;
-        // Cargar filtro guardado para este usuario
-        const uid = this.user.userId;
+        // Cargar filtro guardado para este usuario (uid desde session_info global)
+        const uid = odoo.session_info?.uid || odoo.uid || 'default';
         const filtro = loadFiltro(uid);
         this.state.rutaId = filtro.rutaId || '';
         this.state.dia = filtro.dia || '';
@@ -223,13 +222,15 @@ class DjiPlanificador extends Component {
 
     async onRutaChange(ev) {
         this.state.rutaId = ev.target.value ? parseInt(ev.target.value) : '';
-        saveFiltro(this.user.userId, this.state.rutaId, this.state.dia);
+        const uid = odoo.session_info?.uid || odoo.uid || 'default';
+        saveFiltro(uid, this.state.rutaId, this.state.dia);
         await this.cargarPedidos();
     }
 
     async setDia(dia) {
         this.state.dia = dia;
-        saveFiltro(this.user.userId, this.state.rutaId, this.state.dia);
+        const uid = odoo.session_info?.uid || odoo.uid || 'default';
+        saveFiltro(uid, this.state.rutaId, this.state.dia);
         await this.cargarPedidos();
     }
 
