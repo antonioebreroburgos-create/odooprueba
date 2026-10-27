@@ -163,15 +163,15 @@ class DjiPlanificador extends Component {
 
     async init() {
         this.state.loading = true;
-        const rutas = await this.orm.call('dji.planificador.rutas', 'get_rutas', [[]]);
+        const rutas = await this.orm.call('dji.planificador.rutas', 'get_rutas', [[]], {});
         this.state.rutas = rutas;
         await this.cargarPedidos();
     }
 
     async cargarPedidos() {
         this.state.loading = true;
-        const pedidos = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [[]],
-            { ruta_id: this.state.rutaId || null, dia: this.state.dia || null });
+        const pedidos = await this.orm.call('dji.planificador.rutas', 'get_pedidos',
+            [[], this.state.rutaId || null, this.state.dia || null]);
         this.state.pedidos = pedidos;
 
         // Calcular counts por día
@@ -185,8 +185,8 @@ class DjiPlanificador extends Component {
         }
         // Recalcular counts SIN filtro de día para mostrar totales reales
         if (this.state.dia) {
-            const todos = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [[]],
-                { ruta_id: this.state.rutaId || null, dia: null });
+            const todos = await this.orm.call('dji.planificador.rutas', 'get_pedidos',
+                [[], this.state.rutaId || null, null]);
             for (const d of DIAS) {
                 if (d.key === 'sin_dia') {
                     counts[d.key] = todos.filter(p => !p.dia_tags || p.dia_tags.length === 0).length;
@@ -211,7 +211,7 @@ class DjiPlanificador extends Component {
 
     async onDiaChange(ev, orderId) {
         const dia = ev.target.value;
-        await this.orm.call('dji.planificador.rutas', 'set_dia_pedido', [[]], { order_id: orderId, dia_nuevo: dia });
+        await this.orm.call('dji.planificador.rutas', 'set_dia_pedido', [[], orderId, dia]);
         this.flashSaved('flash_dia_' + orderId);
         // Actualizar local
         const p = this.state.pedidos.find(x => x.id === orderId);
@@ -232,7 +232,7 @@ class DjiPlanificador extends Component {
 
     async onRutaPedidoChange(ev, orderId) {
         const rutaId = ev.target.value ? parseInt(ev.target.value) : null;
-        await this.orm.call('dji.planificador.rutas', 'set_ruta_pedido', [[]], { order_id: orderId, ruta_id: rutaId });
+        await this.orm.call('dji.planificador.rutas', 'set_ruta_pedido', [[], orderId, rutaId]);
         this.flashSaved('flash_ruta_' + orderId);
         const p = this.state.pedidos.find(x => x.id === orderId);
         if (p) p.ruta_ids = rutaId ? [rutaId] : [];

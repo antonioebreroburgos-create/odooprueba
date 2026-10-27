@@ -26,7 +26,7 @@ class DjiPlanificadorRutas(models.TransientModel):
     ], string='Día')
 
     @api.model
-    def get_pedidos(self, ruta_id=None, dia=None):
+    def get_pedidos(self, ruta_id=None, dia=None):  # args posicionales desde JS
         """Devuelve presupuestos (draft/sent) filtrados por ruta y/o día"""
         domain = [('state', 'in', ['draft', 'sent'])]
         if ruta_id:
@@ -83,7 +83,7 @@ class DjiPlanificadorRutas(models.TransientModel):
         return result
 
     @api.model
-    def set_dia_pedido(self, order_id, dia_nuevo):
+    def set_dia_pedido(self, order_id=None, dia_nuevo=None):
         """Cambia el día de reparto de un pedido (etiqueta)"""
         order = self.env['sale.order'].browse(int(order_id))
         if not order:
@@ -110,7 +110,7 @@ class DjiPlanificadorRutas(models.TransientModel):
         return {'ok': True}
 
     @api.model
-    def set_ruta_pedido(self, order_id, ruta_id):
+    def set_ruta_pedido(self, order_id=None, ruta_id=None):
         """Cambia la ruta/repartidor de un pedido"""
         order = self.env['sale.order'].browse(int(order_id))
         if not order:
