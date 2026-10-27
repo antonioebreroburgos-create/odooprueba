@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_dji_planificador" model="ir.actions.client">
+        <field name="name">Planificador de Rutas</field>
+        <field name="tag">dji_planificador_rutas</field>
+    </record>
+</odoo>

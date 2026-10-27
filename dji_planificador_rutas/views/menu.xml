@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+        id="menu_dji_planificador"
+        name="🗓️ Planificador de Rutas"
+        action="dji_planificador_rutas.action_dji_planificador"
+        parent="sale.sale_order_menu"
+        sequence="5"/>
+</odoo>
