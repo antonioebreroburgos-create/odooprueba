@@ -127,6 +127,8 @@ class DjiPlanificador extends Component {
     </t>
 </div>`;
 
+    static props = ['*'];
+
     setup() {
         this.orm = useService('orm');
         this.dias = DIAS;
@@ -244,19 +246,7 @@ class DjiPlanificador extends Component {
     }
 }
 
-// Parche para inyectar el componente en la vista form del planificador
-import { FormController } from '@web/views/form/form_controller';
-import { patch } from '@web/core/utils/patch';
-
-patch(FormController.prototype, {
-    setup() {
-        super.setup(...arguments);
-    },
-});
-
-// Registrar como widget standalone
-registry.category('actions').add('dji_planificador_rutas', {
-    Component: DjiPlanificador,
-});
+// Registrar como acción cliente (Odoo 19: pasar el Component directamente)
+registry.category('actions').add('dji_planificador_rutas', DjiPlanificador);
 
 export { DjiPlanificador };
