@@ -36,12 +36,17 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <!-- Menú: Ventas > Configuración > Zonas de reparto DJI -->
+    <!-- Menú raíz propio DJI -->
+    <menuitem id="menu_dji_root"
+              name="DJI"
+              sequence="99"/>
+
+    <!-- Menú: DJI > Zonas de reparto -->
     <menuitem id="menu_dji_zona"
-              name="Zonas de reparto DJI"
-              parent="sale.sale_order_menu_root"
+              name="Zonas de reparto"
+              parent="menu_dji_root"
               action="action_dji_zona"
-              sequence="99"
+              sequence="10"
               groups="sales_team.group_sale_manager"/>
 
 </odoo>
