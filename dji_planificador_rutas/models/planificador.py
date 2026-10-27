@@ -66,9 +66,14 @@ class DjiPlanificadorRutas(models.TransientModel):
                 continue
 
             rutas = o.route_ids
-            # Ciudad: usar dirección de entrega si es diferente al cliente principal
-            shipping = o.partner_shipping_id
-            city = (shipping.city or o.partner_id.city or '').strip()
+            # Ciudad: dirección de entrega → cliente facturación → partner principal
+            city = (
+                (o.partner_shipping_id.city if o.partner_shipping_id else '') or
+                (o.partner_invoice_id.city if o.partner_invoice_id else '') or
+                o.partner_id.city or
+                o.partner_id.commercial_partner_id.city or
+                ''
+            ).strip()
 
             result.append({
                 'id': o.id,
