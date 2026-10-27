@@ -7,18 +7,16 @@ DIAS_LABEL = {
     'lunes': 'Lunes', 'martes': 'Martes', 'miercoles': 'Miércoles',
     'jueves': 'Jueves', 'viernes': 'Viernes', 'sabado': 'Sábado', 'domingo': 'Domingo',
 }
-# weekday() de Python: 0=lun, 1=mar, ..., 6=dom
 WEEKDAY_MAP = {0: 'lunes', 1: 'martes', 2: 'miercoles',
                3: 'jueves', 4: 'viernes', 5: 'sabado', 6: 'domingo'}
 PEDIDO_MINIMO = 90.0
 
 
 def _proxima_fecha(dias_activos):
-    """Calcula la próxima fecha de entrega a partir de hoy (inclusive mañana)."""
     if not dias_activos:
         return None
     hoy = date.today()
-    for offset in range(1, 15):  # buscar en los próximos 14 días
+    for offset in range(1, 15):
         candidate = hoy + timedelta(days=offset)
         if WEEKDAY_MAP.get(candidate.weekday()) in dias_activos:
             return candidate
@@ -28,13 +26,11 @@ def _proxima_fecha(dias_activos):
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    # Campo calculado: aviso de próxima entrega (texto, no guardado)
     dji_aviso_entrega = fields.Char(
         string='Próxima entrega',
         compute='_compute_dji_avisos',
         store=False,
     )
-    # Aviso de pedido mínimo
     dji_aviso_minimo = fields.Char(
         string='Aviso pedido mínimo',
         compute='_compute_dji_avisos',
@@ -52,14 +48,9 @@ class SaleOrder(models.Model):
                  'amount_untaxed')
     def _compute_dji_avisos(self):
         for order in self:
-            # Determinar el partner de entrega (shipping o principal)
             entrega = order.partner_shipping_id or order.partner_id
-            if entrega:
-                dias = entrega.dji_dias_activos
-            else:
-                dias = []
+            dias = entrega.dji_dias_activos if entrega else []
 
-            # Aviso próxima entrega
             if dias:
                 proxima = _proxima_fecha(dias)
                 if proxima:
@@ -75,7 +66,6 @@ class SaleOrder(models.Model):
             else:
                 order.dji_aviso_entrega = False
 
-            # Aviso pedido mínimo
             if order.amount_untaxed and order.amount_untaxed < PEDIDO_MINIMO:
                 order.dji_aviso_minimo = (
                     f"⚠️ Base del pedido ({order.amount_untaxed:.2f} €) "
@@ -86,7 +76,6 @@ class SaleOrder(models.Model):
 
     @api.model
     def get_avisos_pedido(self, order_id):
-        """Devuelve los avisos de un pedido para mostrar en el frontend."""
         order = self.browse(int(order_id))
         if not order:
             return {}
