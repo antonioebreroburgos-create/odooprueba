@@ -105,7 +105,13 @@ class DjiPlanificadorRutas(models.TransientModel):
             zona_name = _partner_zona_name(shipping) or _partner_zona_name(o.partner_id)
             zona_id_val = _partner_zona_id(shipping) or _partner_zona_id(o.partner_id)
 
-            commercial_name = (o.partner_id.commercial_company_name or '').strip()
+            # Nombre comercial: si hay dirección de entrega diferente al cliente, mostramos su nombre
+            # Si no, usamos el nombre comercial del partner principal
+            shipping_partner = o.partner_shipping_id
+            if shipping_partner and shipping_partner != o.partner_id:
+                commercial_name = (shipping_partner.name or '').strip()
+            else:
+                commercial_name = (o.partner_id.commercial_company_name or '').strip()
 
             result.append({
                 'id': o.id,
