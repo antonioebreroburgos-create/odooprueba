@@ -36,7 +36,7 @@ class DjiPlanificador extends Component {
     static template = xml`
 <div id="dji_planificador_root">
     <div class="dji-plan-header">
-        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.2.1</span></h2>
+        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.3.0</span></h2>
 
         <!-- Filtro repartidor -->
         <select class="dji-plan-select" t-on-change="onRutaChange">
@@ -106,8 +106,12 @@ class DjiPlanificador extends Component {
                 <thead>
                     <tr>
                         <th>Pedido</th>
-                        <th>Cliente</th>
-                        <th>Ciudad</th>
+                        <th class="dji-th-sort" t-on-click="() => this.onSort('partner')">
+                            Cliente <span class="dji-sort-icon"><t t-esc="sortIcon('partner')"/></span>
+                        </th>
+                        <th class="dji-th-sort" t-on-click="() => this.onSort('city')">
+                            Ciudad <span class="dji-sort-icon"><t t-esc="sortIcon('city')"/></span>
+                        </th>
                         <th>Zona</th>
                         <th>Importe</th>
                         <th>Día</th>
@@ -116,7 +120,7 @@ class DjiPlanificador extends Component {
                     </tr>
                 </thead>
                 <tbody>
-                    <t t-foreach="state.pedidos" t-as="p" t-key="p.id">
+                    <t t-foreach="pedidosOrdenados" t-as="p" t-key="p.id">
                         <tr>
                             <td>
                                 <a class="dji-pedido-link"
@@ -197,6 +201,8 @@ class DjiPlanificador extends Component {
             loading: true,
             counts: {},
             zonas: [],
+            sortField: '',
+            sortDir: 'asc',
         });
         onMounted(() => this.init());
     }
@@ -212,6 +218,31 @@ class DjiPlanificador extends Component {
 
     formatImporte(amount, currency) {
         return (amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' ' + (currency || '€');
+    }
+
+    get pedidosOrdenados() {
+        const { pedidos, sortField, sortDir } = this.state;
+        if (!sortField) return pedidos;
+        return [...pedidos].sort((a, b) => {
+            const va = (a[sortField] || '').toLowerCase();
+            const vb = (b[sortField] || '').toLowerCase();
+            const cmp = va.localeCompare(vb, 'es');
+            return sortDir === 'asc' ? cmp : -cmp;
+        });
+    }
+
+    onSort(field) {
+        if (this.state.sortField === field) {
+            this.state.sortDir = this.state.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.state.sortField = field;
+            this.state.sortDir = 'asc';
+        }
+    }
+
+    sortIcon(field) {
+        if (this.state.sortField !== field) return '⇅';
+        return this.state.sortDir === 'asc' ? '↑' : '↓';
     }
 
     otrasEtiquetas(p) {

@@ -230,3 +230,20 @@
     transition: opacity .3s;
 }
 .dji-saved-flash.show { opacity: 1; }
+.dji-th-sort {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+.dji-th-sort:hover {
+    background: #e2e6ea;
+    color: #0a7cff;
+}
+.dji-sort-icon {
+    font-size: 11px;
+    color: #adb5bd;
+    margin-left: 3px;
+}
+.dji-th-sort:hover .dji-sort-icon {
+    color: #0a7cff;
+}
