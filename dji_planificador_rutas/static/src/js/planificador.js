@@ -36,7 +36,7 @@ class DjiPlanificador extends Component {
     static template = xml`
 <div id="dji_planificador_root">
     <div class="dji-plan-header">
-        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.3.1</span></h2>
+        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.4.1</span></h2>
 
         <!-- Filtro repartidor -->
         <select class="dji-plan-select" t-on-change="onRutaChange">
@@ -102,10 +102,21 @@ class DjiPlanificador extends Component {
             <div class="dji-empty">📋 No hay presupuestos con estos filtros</div>
         </t>
         <t t-else="">
+            <div class="dji-revision-bar">
+                <span class="dji-revision-contador">
+                    ✅ Revisados: <strong><t t-esc="revisadosCount"/>/<t t-esc="state.pedidos.length"/></strong>
+                </span>
+                <t t-if="revisadosCount > 0">
+                    <button class="dji-btn-limpiar" t-on-click="limpiarRevisados">🔄 Limpiar revisados</button>
+                </t>
+            </div>
             <table class="dji-plan-tabla">
                 <thead>
                     <tr>
-                        <th>Pedido</th>
+                        <th style="width:36px">✓</th>
+                        <th class="dji-th-sort" t-on-click="() => this.onSort('name')">
+                            Pedido <span class="dji-sort-icon"><t t-esc="sortIcon('name')"/></span>
+                        </th>
                         <th class="dji-th-sort" t-on-click="() => this.onSort('partner')">
                             Cliente <span class="dji-sort-icon"><t t-esc="sortIcon('partner')"/></span>
                         </th>
@@ -121,7 +132,13 @@ class DjiPlanificador extends Component {
                 </thead>
                 <tbody>
                     <t t-foreach="pedidosOrdenados" t-as="p" t-key="p.id">
-                        <tr>
+                        <tr t-att-class="state.revisados[p.id] ? 'dji-row-revisada' : ''">
+                            <td class="dji-check-cell">
+                                <input type="checkbox"
+                                       class="dji-check-revision"
+                                       t-att-checked="state.revisados[p.id]"
+                                       t-on-change="(ev) => this.onRevisionChange(ev, p.id)"/>
+                            </td>
                             <td>
                                 <a class="dji-pedido-link"
                                    t-att-href="'/odoo/sales/' + p.id"
@@ -203,6 +220,7 @@ class DjiPlanificador extends Component {
             zonas: [],
             sortField: '',
             sortDir: 'asc',
+            revisados: this._loadRevisados(),
         });
         onMounted(() => this.init());
     }
@@ -218,6 +236,30 @@ class DjiPlanificador extends Component {
 
     formatImporte(amount, currency) {
         return (amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' ' + (currency || '€');
+    }
+
+    _loadRevisados() {
+        try { return JSON.parse(localStorage.getItem('dji_planificador_revisados') || '{}'); }
+        catch { return {}; }
+    }
+
+    _saveRevisados() {
+        try { localStorage.setItem('dji_planificador_revisados', JSON.stringify(this.state.revisados)); }
+        catch {}
+    }
+
+    get revisadosCount() {
+        return Object.values(this.state.revisados).filter(Boolean).length;
+    }
+
+    onRevisionChange(ev, orderId) {
+        this.state.revisados = { ...this.state.revisados, [orderId]: ev.target.checked };
+        this._saveRevisados();
+    }
+
+    limpiarRevisados() {
+        this.state.revisados = {};
+        this._saveRevisados();
     }
 
     get pedidosOrdenados() {
