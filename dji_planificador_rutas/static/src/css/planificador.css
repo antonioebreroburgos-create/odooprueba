@@ -135,6 +135,11 @@
     font-weight: 600;
     color: #1a1a2e;
 }
+.dji-commercial-name {
+    color: #6c757d;
+    font-size: 12px;
+    font-weight: 400;
+}
 .dji-city {
     color: #6c757d;
     font-size: 13px;

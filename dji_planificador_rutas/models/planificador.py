@@ -105,10 +105,14 @@ class DjiPlanificadorRutas(models.TransientModel):
             zona_name = _partner_zona_name(shipping) or _partner_zona_name(o.partner_id)
             zona_id_val = _partner_zona_id(shipping) or _partner_zona_id(o.partner_id)
 
+            commercial = o.partner_id.commercial_partner_id
+            commercial_name = (commercial.name or '') if commercial and commercial != o.partner_id else ''
+
             result.append({
                 'id': o.id,
                 'name': o.name,
                 'partner': o.partner_id.name or '',
+                'commercial_name': commercial_name,
                 'city': city,
                 'amount': o.amount_total,
                 'currency': o.currency_id.symbol or '€',

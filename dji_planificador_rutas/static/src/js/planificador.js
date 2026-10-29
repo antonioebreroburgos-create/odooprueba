@@ -125,7 +125,12 @@ class DjiPlanificador extends Component {
                                     <t t-esc="p.name"/>
                                 </a>
                             </td>
-                            <td class="dji-partner-name"><t t-esc="p.partner"/></td>
+                            <td class="dji-partner-name">
+                                <t t-esc="p.partner"/>
+                                <t t-if="p.commercial_name">
+                                    <br/><span class="dji-commercial-name"><t t-esc="p.commercial_name"/></span>
+                                </t>
+                            </td>
                             <td class="dji-city"><t t-esc="p.city"/></td>
                             <td class="dji-zona-cell">
                                 <t t-if="p.zona_name">
