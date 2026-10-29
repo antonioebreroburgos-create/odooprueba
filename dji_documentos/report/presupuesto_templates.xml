@@ -23,6 +23,11 @@
         <div t-attf-class="article o_company_#{company.id}_layout"
              t-att-data-oe-model="doc._name" t-att-data-oe-id="doc.id"
              t-att-data-oe-lang="doc.env.context.get('lang')">
+            <!-- Título invisible: wkhtmltopdf crea con él una marca (outline) por documento y Odoo
+                 la usa para partir un PDF de varios documentos en uno por registro (adjuntos,
+                 envío por lotes). Sin título, falla al imprimir/enviar varias facturas juntas
+                 si alguna ocupa más de una página. -->
+            <h2 class="dji-marca-pdf" style="font-size:1px;line-height:1px;height:1px;margin:0;padding:0;color:#ffffff;overflow:hidden;" t-out="doc.name or str(doc.id)"/>
             <div class="dji-alb dji-pre">
 
                 <table class="pre-meta">

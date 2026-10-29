@@ -57,6 +57,11 @@
         <div t-attf-class="article o_company_#{company.id}_layout"
              t-att-data-oe-model="o._name" t-att-data-oe-id="o.id"
              t-att-data-oe-lang="o.env.context.get('lang')">
+            <!-- Título invisible: wkhtmltopdf crea con él una marca (outline) por documento y Odoo
+                 la usa para partir un PDF de varios documentos en uno por registro (adjuntos,
+                 envío por lotes). Sin título, falla al imprimir/enviar varias facturas juntas
+                 si alguna ocupa más de una página. -->
+            <h2 class="dji-marca-pdf" style="font-size:1px;line-height:1px;height:1px;margin:0;padding:0;color:#ffffff;overflow:hidden;" t-out="(d['titulo'] or 'Factura') + ' ' + (d['numero'] or o.name or str(o.id))"/>
             <div t-attf-class="dji-alb dji-fac #{'dji-rect' if rect else ''}">
 
                 <table t-if="rect" class="franja-rect">
