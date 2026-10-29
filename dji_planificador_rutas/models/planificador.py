@@ -48,7 +48,7 @@ class DjiPlanificadorRutas(models.TransientModel):
     _description = 'Planificador de Rutas DJI'
 
     @api.model
-    def get_pedidos(self, ruta_id=None, dia=None, zona_id=None, modo_dia='tags', modo_estado='presupuesto'):
+    def get_pedidos(self, ruta_id=None, dia=None, zona_id=None, modo_dia='tags', modo_estado='todos'):
         """
         Devuelve presupuestos (draft/sent) filtrados.
 
@@ -59,13 +59,7 @@ class DjiPlanificadorRutas(models.TransientModel):
           modo_dia – 'tags'    → filtra por etiquetas de día del pedido
                      'partner' → filtra por días de servicio del partner (dji_dia_*)
         """
-        # modo_estado: 'presupuesto' → draft/sent | 'pedido' → sale | 'todos' → ambos
-        if modo_estado == 'pedido':
-            domain = [('state', '=', 'sale')]
-        elif modo_estado == 'todos':
-            domain = [('state', 'in', ['draft', 'sent', 'sale'])]
-        else:
-            domain = [('state', 'in', ['draft', 'sent'])]
+        domain = [('state', 'in', ['draft', 'sent', 'sale'])]
         if ruta_id:
             domain.append(('route_ids', 'in', [int(ruta_id)]))
 
@@ -132,6 +126,7 @@ class DjiPlanificadorRutas(models.TransientModel):
                 'ruta_ids': rutas.ids,
                 'ruta_names': [r.name for r in rutas],
                 'state': o.state,
+                'estado_label': 'Pedido' if o.state == 'sale' else 'Presupuesto',
                 'zona_id': zona_id_val or 0,
                 'zona_name': zona_name,
                 'partner_dias': _partner_dias(shipping) or _partner_dias(o.partner_id),

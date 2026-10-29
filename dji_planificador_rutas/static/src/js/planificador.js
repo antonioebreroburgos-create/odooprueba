@@ -36,26 +36,7 @@ class DjiPlanificador extends Component {
     static template = xml`
 <div id="dji_planificador_root">
     <div class="dji-plan-header">
-        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.5.0</span></h2>
-
-        <!-- Selector estado -->
-        <div class="dji-estado-tabs">
-            <button class="dji-estado-tab"
-                    t-att-class="state.modoEstado === 'presupuesto' ? 'active' : ''"
-                    t-on-click="() => this.setModoEstado('presupuesto')">
-                📋 Presupuestos
-            </button>
-            <button class="dji-estado-tab"
-                    t-att-class="state.modoEstado === 'pedido' ? 'active' : ''"
-                    t-on-click="() => this.setModoEstado('pedido')">
-                ✅ Pedidos
-            </button>
-            <button class="dji-estado-tab"
-                    t-att-class="state.modoEstado === 'todos' ? 'active' : ''"
-                    t-on-click="() => this.setModoEstado('todos')">
-                📦 Todos
-            </button>
-        </div>
+        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.5.1</span></h2>
 
         <!-- Filtro repartidor -->
         <select class="dji-plan-select" t-on-change="onRutaChange">
@@ -87,6 +68,24 @@ class DjiPlanificador extends Component {
         </label>
     </div>
 
+    <div class="dji-estado-bar">
+        <button class="dji-estado-btn"
+                t-att-class="state.modoEstado === 'todos' ? 'active' : ''"
+                t-on-click="() => this.setModoEstado('todos')">
+            Todos
+        </button>
+        <button class="dji-estado-btn presupuesto"
+                t-att-class="state.modoEstado === 'presupuesto' ? 'active' : ''"
+                t-on-click="() => this.setModoEstado('presupuesto')">
+            📋 Presupuestos
+        </button>
+        <button class="dji-estado-btn pedido"
+                t-att-class="state.modoEstado === 'pedido' ? 'active' : ''"
+                t-on-click="() => this.setModoEstado('pedido')">
+            ✅ Pedidos
+        </button>
+    </div>
+
     <div class="dji-dias-bar">
         <button class="dji-dia-btn"
                 t-att-class="state.dia === '' ? 'active' : ''"
@@ -106,7 +105,8 @@ class DjiPlanificador extends Component {
     </div>
 
     <div class="dji-plan-stats" t-if="!state.loading">
-        <strong><t t-esc="state.pedidos.length"/></strong> presupuestos
+        <strong><t t-esc="pedidosOrdenados.length"/></strong>
+        <t t-esc="state.modoEstado === 'pedido' ? ' pedidos' : (state.modoEstado === 'presupuesto' ? ' presupuestos' : ' registros')"/>
         <t t-if="state.zonaId"> · <span class="dji-badge-zona"><t t-esc="zonaLabel"/></span></t>
         <t t-if="state.dia"> · <t t-esc="diaLabel"/></t>
         <t t-if="state.modoDia === 'partner'">
@@ -123,7 +123,7 @@ class DjiPlanificador extends Component {
         <t t-else="">
             <div class="dji-revision-bar">
                 <span class="dji-revision-contador">
-                    ✅ Revisados: <strong><t t-esc="revisadosCount"/>/<t t-esc="state.pedidos.length"/></strong>
+                    ✅ Revisados: <strong><t t-esc="revisadosCount"/>/<t t-esc="pedidosOrdenados.length"/></strong>
                 </span>
                 <t t-if="revisadosCount > 0">
                     <button class="dji-btn-limpiar" t-on-click="limpiarRevisados">🔄 Limpiar revisados</button>
@@ -133,8 +133,11 @@ class DjiPlanificador extends Component {
                 <thead>
                     <tr>
                         <th style="width:36px">✓</th>
+                        <th class="dji-th-sort" t-on-click="() => this.onSort('estado_label')">
+                            Estado <span class="dji-sort-icon"><t t-esc="sortIcon('estado_label')"/></span>
+                        </th>
                         <th class="dji-th-sort" t-on-click="() => this.onSort('name')">
-                            Pedido <span class="dji-sort-icon"><t t-esc="sortIcon('name')"/></span>
+                            Nº Venta <span class="dji-sort-icon"><t t-esc="sortIcon('name')"/></span>
                         </th>
                         <th class="dji-th-sort" t-on-click="() => this.onSort('partner')">
                             Cliente <span class="dji-sort-icon"><t t-esc="sortIcon('partner')"/></span>
@@ -159,6 +162,11 @@ class DjiPlanificador extends Component {
                                        class="dji-check-revision"
                                        t-att-checked="state.revisados[p.id]"
                                        t-on-change="(ev) => this.onRevisionChange(ev, p.id)"/>
+                            </td>
+                            <td>
+                                <span t-att-class="'dji-badge-estado ' + (p.state === 'sale' ? 'pedido' : 'presupuesto')">
+                                    <t t-esc="p.estado_label"/>
+                                </span>
                             </td>
                             <td>
                                 <a class="dji-pedido-link"
@@ -285,9 +293,15 @@ class DjiPlanificador extends Component {
     }
 
     get pedidosOrdenados() {
-        const { pedidos, sortField, sortDir } = this.state;
-        if (!sortField) return pedidos;
-        return [...pedidos].sort((a, b) => {
+        const { pedidos, sortField, sortDir, modoEstado } = this.state;
+        let lista = pedidos;
+        if (modoEstado === 'presupuesto') {
+            lista = pedidos.filter(p => p.state !== 'sale');
+        } else if (modoEstado === 'pedido') {
+            lista = pedidos.filter(p => p.state === 'sale');
+        }
+        if (!sortField) return lista;
+        return [...lista].sort((a, b) => {
             const va = (a[sortField] || '').toLowerCase();
             const vb = (b[sortField] || '').toLowerCase();
             const cmp = va.localeCompare(vb, 'es');
@@ -397,10 +411,10 @@ class DjiPlanificador extends Component {
         await this.cargarPedidos();
     }
 
-    async setModoEstado(modo) {
+    setModoEstado(modo) {
         this.state.modoEstado = modo;
         this._guardarFiltro();
-        await this.cargarPedidos();
+        // Filtro client-side — no recarga Odoo
     }
 
     async onModoDiaChange(ev) {

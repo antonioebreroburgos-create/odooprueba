@@ -1,33 +1,45 @@
 /* DJI Planificador de Rutas */
 
-/* Tabs estado (Presupuestos / Pedidos / Todos) */
-.dji-estado-tabs {
+/* Barra filtro estado */
+.dji-estado-bar {
     display: flex;
-    gap: 4px;
-    background: #f1f3f5;
-    border-radius: 8px;
-    padding: 3px;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
 }
-.dji-estado-tab {
-    border: none;
-    background: transparent;
-    padding: 5px 14px;
-    border-radius: 6px;
+.dji-estado-btn {
+    border: 1px solid #dee2e6;
+    background: #fff;
+    padding: 4px 14px;
+    border-radius: 20px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: #6c757d;
-    transition: background .15s, color .15s;
+    transition: all .15s;
     white-space: nowrap;
 }
-.dji-estado-tab:hover {
-    background: #e9ecef;
-    color: #343a40;
+.dji-estado-btn:hover { background: #f8f9fa; color: #343a40; }
+.dji-estado-btn.active { background: #343a40; color: #fff; border-color: #343a40; }
+.dji-estado-btn.presupuesto.active { background: #fd7e14; border-color: #fd7e14; color: #fff; }
+.dji-estado-btn.pedido.active { background: #198754; border-color: #198754; color: #fff; }
+
+/* Badge estado en tabla */
+.dji-badge-estado {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
 }
-.dji-estado-tab.active {
-    background: #fff;
-    color: #212529;
-    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+.dji-badge-estado.presupuesto {
+    background: #fff3cd;
+    color: #856404;
+}
+.dji-badge-estado.pedido {
+    background: #d1e7dd;
+    color: #0f5132;
 }
 
 .o_action_manager,
