@@ -48,7 +48,7 @@ class DjiPlanificadorRutas(models.TransientModel):
     _description = 'Planificador de Rutas DJI'
 
     @api.model
-    def get_pedidos(self, ruta_id=None, dia=None, zona_id=None, modo_dia='tags'):
+    def get_pedidos(self, ruta_id=None, dia=None, zona_id=None, modo_dia='tags', modo_estado='presupuesto'):
         """
         Devuelve presupuestos (draft/sent) filtrados.
 
@@ -59,7 +59,13 @@ class DjiPlanificadorRutas(models.TransientModel):
           modo_dia – 'tags'    → filtra por etiquetas de día del pedido
                      'partner' → filtra por días de servicio del partner (dji_dia_*)
         """
-        domain = [('state', 'in', ['draft', 'sent'])]
+        # modo_estado: 'presupuesto' → draft/sent | 'pedido' → sale | 'todos' → ambos
+        if modo_estado == 'pedido':
+            domain = [('state', '=', 'sale')]
+        elif modo_estado == 'todos':
+            domain = [('state', 'in', ['draft', 'sent', 'sale'])]
+        else:
+            domain = [('state', 'in', ['draft', 'sent'])]
         if ruta_id:
             domain.append(('route_ids', 'in', [int(ruta_id)]))
 

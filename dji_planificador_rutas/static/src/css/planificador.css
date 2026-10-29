@@ -1,4 +1,35 @@
 /* DJI Planificador de Rutas */
+
+/* Tabs estado (Presupuestos / Pedidos / Todos) */
+.dji-estado-tabs {
+    display: flex;
+    gap: 4px;
+    background: #f1f3f5;
+    border-radius: 8px;
+    padding: 3px;
+}
+.dji-estado-tab {
+    border: none;
+    background: transparent;
+    padding: 5px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+}
+.dji-estado-tab:hover {
+    background: #e9ecef;
+    color: #343a40;
+}
+.dji-estado-tab.active {
+    background: #fff;
+    color: #212529;
+    box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+
 .o_action_manager,
 .o_client_action_container,
 .o_client_action {

@@ -22,8 +22,8 @@ function storageKey(uid) {
 function loadFiltro(uid) {
     try {
         const raw = localStorage.getItem(storageKey(uid));
-        return raw ? JSON.parse(raw) : { rutaId: '', dia: '', zonaId: 0, modoDia: 'tags' };
-    } catch { return { rutaId: '', dia: '', zonaId: 0, modoDia: 'tags' }; }
+        return raw ? JSON.parse(raw) : { rutaId: '', dia: '', zonaId: 0, modoDia: 'tags', modoEstado: 'presupuesto' };
+    } catch { return { rutaId: '', dia: '', zonaId: 0, modoDia: 'tags', modoEstado: 'presupuesto' }; }
 }
 
 function saveFiltro(uid, data) {
@@ -36,7 +36,26 @@ class DjiPlanificador extends Component {
     static template = xml`
 <div id="dji_planificador_root">
     <div class="dji-plan-header">
-        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.4.1</span></h2>
+        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.5.0</span></h2>
+
+        <!-- Selector estado -->
+        <div class="dji-estado-tabs">
+            <button class="dji-estado-tab"
+                    t-att-class="state.modoEstado === 'presupuesto' ? 'active' : ''"
+                    t-on-click="() => this.setModoEstado('presupuesto')">
+                📋 Presupuestos
+            </button>
+            <button class="dji-estado-tab"
+                    t-att-class="state.modoEstado === 'pedido' ? 'active' : ''"
+                    t-on-click="() => this.setModoEstado('pedido')">
+                ✅ Pedidos
+            </button>
+            <button class="dji-estado-tab"
+                    t-att-class="state.modoEstado === 'todos' ? 'active' : ''"
+                    t-on-click="() => this.setModoEstado('todos')">
+                📦 Todos
+            </button>
+        </div>
 
         <!-- Filtro repartidor -->
         <select class="dji-plan-select" t-on-change="onRutaChange">
@@ -123,7 +142,9 @@ class DjiPlanificador extends Component {
                         <th class="dji-th-sort" t-on-click="() => this.onSort('city')">
                             Ciudad <span class="dji-sort-icon"><t t-esc="sortIcon('city')"/></span>
                         </th>
-                        <th>Zona</th>
+                                        <th class="dji-th-sort" t-on-click="() => this.onSort('zona_name')">
+                            Zona <span class="dji-sort-icon"><t t-esc="sortIcon('zona_name')"/></span>
+                        </th>
                         <th>Importe</th>
                         <th>Día</th>
                         <th>Repartidor</th>
@@ -218,6 +239,7 @@ class DjiPlanificador extends Component {
             loading: true,
             counts: {},
             zonas: [],
+            modoEstado: 'presupuesto',
             sortField: '',
             sortDir: 'asc',
             revisados: this._loadRevisados(),
@@ -302,10 +324,11 @@ class DjiPlanificador extends Component {
         this.state.loading = true;
         const uid = odoo.session_info?.uid || odoo.uid || 'default';
         const filtro = loadFiltro(uid);
-        this.state.rutaId = filtro.rutaId || '';
-        this.state.dia    = filtro.dia    || '';
-        this.state.zonaId = filtro.zonaId || 0;
-        this.state.modoDia = filtro.modoDia || 'tags';
+        this.state.rutaId     = filtro.rutaId     || '';
+        this.state.dia        = filtro.dia        || '';
+        this.state.zonaId     = filtro.zonaId     || 0;
+        this.state.modoDia    = filtro.modoDia    || 'tags';
+        this.state.modoEstado = filtro.modoEstado || 'presupuesto';
 
         const [rutas, zonas] = await Promise.all([
             this.orm.call('dji.planificador.rutas', 'get_rutas', [], {}),
@@ -320,10 +343,11 @@ class DjiPlanificador extends Component {
     async cargarPedidos() {
         this.state.loading = true;
         const pedidos = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [], {
-            ruta_id:  this.state.rutaId || null,
-            dia:      this.state.dia    || null,
-            zona_id:  this.state.zonaId || null,
-            modo_dia: this.state.modoDia,
+            ruta_id:     this.state.rutaId     || null,
+            dia:         this.state.dia        || null,
+            zona_id:     this.state.zonaId     || null,
+            modo_dia:    this.state.modoDia,
+            modo_estado: this.state.modoEstado,
         });
         this.state.pedidos = pedidos;
 
@@ -331,10 +355,11 @@ class DjiPlanificador extends Component {
         let base = pedidos;
         if (this.state.dia) {
             base = await this.orm.call('dji.planificador.rutas', 'get_pedidos', [], {
-                ruta_id:  this.state.rutaId || null,
-                dia:      null,
-                zona_id:  this.state.zonaId || null,
-                modo_dia: this.state.modoDia,
+                ruta_id:     this.state.rutaId  || null,
+                dia:         null,
+                zona_id:     this.state.zonaId  || null,
+                modo_dia:    this.state.modoDia,
+                modo_estado: this.state.modoEstado,
             });
         }
         for (const d of DIAS) {
@@ -352,10 +377,11 @@ class DjiPlanificador extends Component {
     _guardarFiltro() {
         const uid = odoo.session_info?.uid || odoo.uid || 'default';
         saveFiltro(uid, {
-            rutaId: this.state.rutaId,
-            dia:    this.state.dia,
-            zonaId: this.state.zonaId,
-            modoDia: this.state.modoDia,
+            rutaId:     this.state.rutaId,
+            dia:        this.state.dia,
+            zonaId:     this.state.zonaId,
+            modoDia:    this.state.modoDia,
+            modoEstado: this.state.modoEstado,
         });
     }
 
@@ -367,6 +393,12 @@ class DjiPlanificador extends Component {
 
     async onZonaChange(ev) {
         this.state.zonaId = ev.target.value ? parseInt(ev.target.value) : 0;
+        this._guardarFiltro();
+        await this.cargarPedidos();
+    }
+
+    async setModoEstado(modo) {
+        this.state.modoEstado = modo;
         this._guardarFiltro();
         await this.cargarPedidos();
     }
