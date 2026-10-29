@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from datetime import date, timedelta
 
 DIAS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 DIAS_LABEL = {
@@ -48,7 +49,7 @@ class DjiPlanificadorRutas(models.TransientModel):
     _description = 'Planificador de Rutas DJI'
 
     @api.model
-    def get_pedidos(self, ruta_id=None, dia=None, zona_id=None, modo_dia='tags', modo_estado='todos'):
+    def get_pedidos(self, ruta_id=None, dia=None, zona_id=None, modo_dia='tags', modo_estado='todos', solo_recientes=True, dias_recientes=20):
         """
         Devuelve presupuestos (draft/sent) filtrados.
 
@@ -60,6 +61,9 @@ class DjiPlanificadorRutas(models.TransientModel):
                      'partner' → filtra por días de servicio del partner (dji_dia_*)
         """
         domain = [('state', 'in', ['draft', 'sent', 'sale'])]
+        if solo_recientes:
+            fecha_limite = date.today() - timedelta(days=int(dias_recientes))
+            domain.append(('date_order', '>=', fields.Datetime.to_string(fecha_limite)))
         if ruta_id:
             domain.append(('route_ids', 'in', [int(ruta_id)]))
 

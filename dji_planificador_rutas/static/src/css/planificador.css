@@ -1,5 +1,15 @@
 /* DJI Planificador de Rutas */
 
+.dji-recientes-label {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    padding: 3px 10px;
+    color: #856404;
+    font-size: 12px;
+}
+.dji-recientes-label input { accent-color: #fd7e14; }
+
 /* Barra filtro estado */
 .dji-estado-bar {
     display: flex;
