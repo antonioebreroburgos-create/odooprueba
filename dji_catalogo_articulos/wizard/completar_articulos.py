@@ -88,9 +88,42 @@ class CatalogoCompletar(models.TransientModel):
         return {'type': 'ir.actions.act_window_close'}
 
 
+# Tablas de las etiquetas de cada línea del asistente
+TABLAS_ETIQUETAS = [f'dji_catalogo_linea_{c}_rel' for c in (
+    'producto', 'momento', 'origen', 'preparacion', 'conservacion', 'alergenos', 'caracteristicas', 'calidad', 'otras')]
+
+
 class CatalogoCompletarLinea(models.TransientModel):
     _name = 'dji.catalogo.completar.linea'
     _description = 'Artículo a completar para el catálogo'
+
+    def init(self):
+        """Las tablas de etiquetas de las líneas tienen que borrarse en cascada con la línea.
+        Si alguna se creó sin "ON DELETE CASCADE" (pasó con la de Producto al añadirla en la
+        19.0.1.3.0), al guardar el asistente Odoo no podía borrar las líneas y salía
+        "Another model is using the record… dji_catalogo_linea_producto_rel_linea_id_fkey".
+        Aquí se rehacen las claves con borrado en cascada (y se limpian filas huérfanas)."""
+        cr = self.env.cr
+        for tabla in TABLAS_ETIQUETAS:
+            cr.execute("SELECT to_regclass(%s)", (tabla,))
+            if not cr.fetchone()[0]:
+                continue
+            cr.execute(f'DELETE FROM "{tabla}" WHERE linea_id NOT IN (SELECT id FROM "{self._table}") '
+                       f'OR tag_id NOT IN (SELECT id FROM product_tag)')
+            for columna, destino in (('linea_id', self._table), ('tag_id', 'product_tag')):
+                cr.execute("""
+                    SELECT c.conname, c.confdeltype
+                      FROM pg_constraint c
+                      JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+                     WHERE c.conrelid = %s::regclass AND c.contype = 'f' AND a.attname = %s
+                """, (tabla, columna))
+                claves = cr.fetchall()
+                if claves and all(tipo == 'c' for _, tipo in claves):
+                    continue  # ya borra en cascada
+                for nombre, _tipo in claves:
+                    cr.execute(f'ALTER TABLE "{tabla}" DROP CONSTRAINT "{nombre}"')
+                cr.execute(f'ALTER TABLE "{tabla}" ADD CONSTRAINT "{tabla}_{columna}_fkey" '
+                           f'FOREIGN KEY ("{columna}") REFERENCES "{destino}" (id) ON DELETE CASCADE')
 
     asistente_id = fields.Many2one('dji.catalogo.completar', required=True, ondelete='cascade')
     product_tmpl_id = fields.Many2one('product.template', string='Artículo', required=True, readonly=True)
