@@ -33,6 +33,26 @@
 .dji-estado-btn.active { background: #343a40; color: #fff; border-color: #343a40; }
 .dji-estado-btn.presupuesto.active { background: #fd7e14; border-color: #fd7e14; color: #fff; }
 .dji-estado-btn.pedido.active { background: #198754; border-color: #198754; color: #fff; }
+.dji-estado-btn.alerta-sin-ruta { border-color: #dc3545; color: #dc3545; }
+.dji-estado-btn.alerta-sin-ruta:hover { background: #fff5f5; }
+.dji-estado-btn.alerta-sin-ruta.active { background: #dc3545; border-color: #dc3545; color: #fff; }
+.dji-estado-btn.alerta-sin-dia { border-color: #6f42c1; color: #6f42c1; }
+.dji-estado-btn.alerta-sin-dia:hover { background: #f8f4ff; }
+.dji-estado-btn.alerta-sin-dia.active { background: #6f42c1; border-color: #6f42c1; color: #fff; }
+.dji-alerta-sep { color: #dee2e6; font-size: 18px; line-height: 1; align-self: center; margin: 0 2px; }
+.dji-alerta-badge {
+    display: inline-block;
+    background: #dc3545;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+.dji-estado-btn.alerta-sin-dia .dji-alerta-badge { background: #6f42c1; }
+.dji-estado-btn.active .dji-alerta-badge { background: rgba(255,255,255,.3); color: #fff; }
 
 /* Badge estado en tabla */
 .dji-badge-estado {

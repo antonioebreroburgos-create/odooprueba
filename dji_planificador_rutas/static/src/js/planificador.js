@@ -36,7 +36,7 @@ class DjiPlanificador extends Component {
     static template = xml`
 <div id="dji_planificador_root">
     <div class="dji-plan-header">
-        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.5.2</span></h2>
+        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.6.0</span></h2>
 
         <!-- Filtro repartidor -->
         <select class="dji-plan-select" t-on-change="onRutaChange">
@@ -91,6 +91,25 @@ class DjiPlanificador extends Component {
                 t-att-class="state.modoEstado === 'pedido' ? 'active' : ''"
                 t-on-click="() => this.setModoEstado('pedido')">
             ✅ Pedidos
+        </button>
+
+        <span class="dji-alerta-sep">|</span>
+
+        <button class="dji-estado-btn alerta-sin-ruta"
+                t-att-class="state.modoEstado === 'sin_ruta' ? 'active' : ''"
+                t-on-click="() => this.setModoEstado('sin_ruta')">
+            ⚠️ Sin ruta
+            <t t-if="contSinRuta > 0">
+                <span class="dji-alerta-badge"><t t-esc="contSinRuta"/></span>
+            </t>
+        </button>
+        <button class="dji-estado-btn alerta-sin-dia"
+                t-att-class="state.modoEstado === 'sin_dia' ? 'active' : ''"
+                t-on-click="() => this.setModoEstado('sin_dia')">
+            📅 Sin día
+            <t t-if="contSinDia > 0">
+                <span class="dji-alerta-badge"><t t-esc="contSinDia"/></span>
+            </t>
         </button>
     </div>
 
@@ -301,6 +320,32 @@ class DjiPlanificador extends Component {
         this._saveRevisados();
     }
 
+    // Tags que excluyen un presupuesto del filtro "sin ruta"
+    _esSinRuta(p) {
+        const TAGS_IGNORAR = ['semana proxima', 'semana próxima', 'presupuesto en estudio',
+                              'prespuesto en estudio', 'faltas'];
+        const tagNorms = (p.tags || []).map(t =>
+            t.toLowerCase().trim()
+             .replace(/[éèê]/g,'e').replace(/[áàâ]/g,'a')
+             .replace(/[óòô]/g,'o').replace(/[íìî]/g,'i')
+             .replace(/[úùû]/g,'u').replace(/ñ/g,'n')
+        );
+        if (tagNorms.some(t => TAGS_IGNORAR.includes(t))) return false;
+        return p.state !== 'sale' && (!p.ruta_ids || p.ruta_ids.length === 0);
+    }
+
+    _esSinDia(p) {
+        return (p.ruta_ids && p.ruta_ids.length > 0) && (!p.dia_tags || p.dia_tags.length === 0);
+    }
+
+    get contSinRuta() {
+        return this.state.pedidos.filter(p => this._esSinRuta(p)).length;
+    }
+
+    get contSinDia() {
+        return this.state.pedidos.filter(p => this._esSinDia(p)).length;
+    }
+
     get pedidosOrdenados() {
         const { pedidos, sortField, sortDir, modoEstado } = this.state;
         let lista = pedidos;
@@ -308,6 +353,10 @@ class DjiPlanificador extends Component {
             lista = pedidos.filter(p => p.state !== 'sale');
         } else if (modoEstado === 'pedido') {
             lista = pedidos.filter(p => p.state === 'sale');
+        } else if (modoEstado === 'sin_ruta') {
+            lista = pedidos.filter(p => this._esSinRuta(p));
+        } else if (modoEstado === 'sin_dia') {
+            lista = pedidos.filter(p => this._esSinDia(p));
         }
         if (!sortField) return lista;
         return [...lista].sort((a, b) => {
