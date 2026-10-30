@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista del wizard -->
+    <record id="view_dji_sort_lines_wizard" model="ir.ui.view">
+        <field name="name">dji.sort.lines.wizard.form</field>
+        <field name="model">dji.sort.lines.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Ordenar líneas del pedido">
+                <group>
+                    <field name="order_id" readonly="1"/>
+                    <field name="sort_by"/>
+                </group>
+                <footer>
+                    <button name="action_sort" type="object"
+                            string="Ordenar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Botón en el formulario de venta -->
+    <record id="view_order_form_dji_sort" model="ir.ui.view">
+        <field name="name">sale.order.form.dji.sort</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_dji_sort_lines"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-sort-amount-asc"
+                        string="Ordenar líneas"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>
