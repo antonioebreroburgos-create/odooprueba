@@ -116,33 +116,33 @@ class DjiPlanificadorRutas(models.TransientModel):
             def _extract_commercial(partner):
                 """Extrae el nombre comercial de un partner.
                 Prioridad:
-                  1. Campo 'company_name' (Nombre comercial nativo de Odoo)
+                  1. Campo personalizado DJI 'comercial'
                   2. Patrón '(NOMBRE COMERCIAL) TITULAR' en el nombre del partner
-                  3. Patrón '(NOMBRE COMERCIAL) TITULAR' en el commercial_partner_id
+                  3. Campo 'comercial' o patrón en el commercial_partner_id (empresa madre)
                 """
                 if not partner:
                     return ''
-                # 1. Campo nativo "Nombre comercial" de Odoo
-                cn = getattr(partner, 'company_name', None)
-                if cn and cn.strip():
-                    return cn.strip()
+                # 1. Campo personalizado DJI 'comercial'
+                cn = getattr(partner, 'comercial', None)
+                if cn and str(cn).strip() and str(cn) != 'False':
+                    return str(cn).strip()
                 # 2. Patrón en el nombre del propio partner
                 pname = partner.name or ''
                 if pname.startswith('('):
                     closing = pname.find(')')
                     if closing > 1:
                         return pname[1:closing].strip()
-                # 3. Patrón en el partner comercial (empresa madre)
+                # 3. Campo 'comercial' o patrón en la empresa madre
                 comm_partner = partner.commercial_partner_id
                 if comm_partner and comm_partner != partner:
+                    cn2 = getattr(comm_partner, 'comercial', None)
+                    if cn2 and str(cn2).strip() and str(cn2) != 'False':
+                        return str(cn2).strip()
                     cname = comm_partner.name or ''
                     if cname.startswith('('):
                         closing = cname.find(')')
                         if closing > 1:
                             return cname[1:closing].strip()
-                    cn2 = getattr(comm_partner, 'company_name', None)
-                    if cn2 and cn2.strip():
-                        return cn2.strip()
                 return ''
 
             shipping_partner = o.partner_shipping_id
