@@ -36,7 +36,7 @@ class DjiPlanificador extends Component {
     static template = xml`
 <div id="dji_planificador_root">
     <div class="dji-plan-header">
-        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.6.0</span></h2>
+        <h2>🗓️ Planificador de Rutas <span style="font-size:11px;font-weight:400;color:#adb5bd;margin-left:6px">v1.6.1</span></h2>
 
         <!-- Filtro repartidor -->
         <select class="dji-plan-select" t-on-change="onRutaChange">

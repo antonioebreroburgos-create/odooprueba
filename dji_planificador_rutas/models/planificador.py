@@ -109,18 +109,44 @@ class DjiPlanificadorRutas(models.TransientModel):
             zona_name = _partner_zona_name(shipping) or _partner_zona_name(o.partner_id)
             zona_id_val = _partner_zona_id(shipping) or _partner_zona_id(o.partner_id)
 
-            # Nombre comercial: si hay dirección de entrega diferente al cliente, mostramos su nombre
-            # Si no, usamos el nombre comercial del partner principal
+            # Nombre comercial:
+            # 1. Si hay dirección de entrega diferente → nombre del shipping partner
+            # 2. Si el nombre del partner tiene formato "(COMERCIAL) TITULAR" → extraemos COMERCIAL
+            # 3. Si no, usamos commercial_company_name
             shipping_partner = o.partner_shipping_id
             if shipping_partner and shipping_partner != o.partner_id:
                 commercial_name = (shipping_partner.name or '').strip()
             else:
-                commercial_name = (o.partner_id.commercial_company_name or '').strip()
+                partner_name = o.partner_id.name or ''
+                # Detectar patrón "(NOMBRE COMERCIAL) TITULAR"
+                if partner_name.startswith('('):
+                    closing = partner_name.find(')')
+                    if closing > 1:
+                        commercial_name = partner_name[1:closing].strip()
+                    else:
+                        commercial_name = (o.partner_id.commercial_company_name or '').strip()
+                else:
+                    commercial_name = (o.partner_id.commercial_company_name or '').strip()
+            # Evitar mostrar el mismo texto que ya aparece en partner
+            partner_display = o.partner_id.name or ''
+            if commercial_name and commercial_name.lower() == partner_display.lower():
+                commercial_name = ''
+
+            # Nombre para mostrar: si tiene patrón "(COMERCIAL) TITULAR", mostrar solo TITULAR
+            partner_name_raw = o.partner_id.name or ''
+            if partner_name_raw.startswith('('):
+                closing = partner_name_raw.find(')')
+                if closing > 1 and closing < len(partner_name_raw) - 1:
+                    partner_display_name = partner_name_raw[closing + 1:].strip()
+                else:
+                    partner_display_name = partner_name_raw
+            else:
+                partner_display_name = partner_name_raw
 
             result.append({
                 'id': o.id,
                 'name': o.name,
-                'partner': o.partner_id.name or '',
+                'partner': partner_display_name,
                 'commercial_name': commercial_name,
                 'city': city,
                 'amount': o.amount_total,
