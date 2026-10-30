@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'DJI Planificador de Rutas',
-    'version': '19.0.1.6.1',
+    'version': '19.0.1.6.2',
     'summary': 'Planificador visual de rutas y días de reparto para pedidos de venta',
     'author': 'DJI',
     'category': 'Sales',

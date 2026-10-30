@@ -113,24 +113,45 @@ class DjiPlanificadorRutas(models.TransientModel):
             # 1. Si hay dirección de entrega diferente → nombre del shipping partner
             # 2. Si el nombre del partner tiene formato "(COMERCIAL) TITULAR" → extraemos COMERCIAL
             # 3. Si no, usamos commercial_company_name
+            def _extract_commercial(partner):
+                """Extrae el nombre comercial de un partner.
+                Prioridad:
+                  1. Campo 'company_name' (Nombre comercial nativo de Odoo)
+                  2. Patrón '(NOMBRE COMERCIAL) TITULAR' en el nombre del partner
+                  3. Patrón '(NOMBRE COMERCIAL) TITULAR' en el commercial_partner_id
+                """
+                if not partner:
+                    return ''
+                # 1. Campo nativo "Nombre comercial" de Odoo
+                cn = getattr(partner, 'company_name', None)
+                if cn and cn.strip():
+                    return cn.strip()
+                # 2. Patrón en el nombre del propio partner
+                pname = partner.name or ''
+                if pname.startswith('('):
+                    closing = pname.find(')')
+                    if closing > 1:
+                        return pname[1:closing].strip()
+                # 3. Patrón en el partner comercial (empresa madre)
+                comm_partner = partner.commercial_partner_id
+                if comm_partner and comm_partner != partner:
+                    cname = comm_partner.name or ''
+                    if cname.startswith('('):
+                        closing = cname.find(')')
+                        if closing > 1:
+                            return cname[1:closing].strip()
+                    cn2 = getattr(comm_partner, 'company_name', None)
+                    if cn2 and cn2.strip():
+                        return cn2.strip()
+                return ''
+
             shipping_partner = o.partner_shipping_id
             if shipping_partner and shipping_partner != o.partner_id:
-                commercial_name = (shipping_partner.name or '').strip()
+                commercial_name = _extract_commercial(shipping_partner)
+                if not commercial_name:
+                    commercial_name = _extract_commercial(o.partner_id)
             else:
-                partner_name = o.partner_id.name or ''
-                # Detectar patrón "(NOMBRE COMERCIAL) TITULAR"
-                if partner_name.startswith('('):
-                    closing = partner_name.find(')')
-                    if closing > 1:
-                        commercial_name = partner_name[1:closing].strip()
-                    else:
-                        commercial_name = (o.partner_id.commercial_company_name or '').strip()
-                else:
-                    commercial_name = (o.partner_id.commercial_company_name or '').strip()
-            # Evitar mostrar el mismo texto que ya aparece en partner
-            partner_display = o.partner_id.name or ''
-            if commercial_name and commercial_name.lower() == partner_display.lower():
-                commercial_name = ''
+                commercial_name = _extract_commercial(o.partner_id)
 
             # Nombre para mostrar: si tiene patrón "(COMERCIAL) TITULAR", mostrar solo TITULAR
             partner_name_raw = o.partner_id.name or ''
@@ -142,6 +163,10 @@ class DjiPlanificadorRutas(models.TransientModel):
                     partner_display_name = partner_name_raw
             else:
                 partner_display_name = partner_name_raw
+
+            # Evitar mostrar el mismo texto que ya aparece como nombre principal
+            if commercial_name and commercial_name.lower() == partner_display_name.lower():
+                commercial_name = ''
 
             result.append({
                 'id': o.id,
