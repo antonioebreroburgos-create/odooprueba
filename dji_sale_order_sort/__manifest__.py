@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'DJI Sale Order Sort Lines',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'summary': 'Botón para ordenar líneas de pedido por producto, precio, margen o importe',
     'author': 'DJI',
     'category': 'Sales',
