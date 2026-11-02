@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Valores por defecto; se cambian en Compras > Configuración > Ajustes > Tarifas de proveedores -->
+    <record id="param_empresa" model="ir.config_parameter">
+        <field name="key">tarifas_proveedor.empresa</field>
+        <field name="value">DJI</field>
+    </record>
+    <record id="param_tolerancia" model="ir.config_parameter">
+        <field name="key">tarifas_proveedor.tolerancia</field>
+        <field name="value">1.0</field>
+    </record>
+</odoo>

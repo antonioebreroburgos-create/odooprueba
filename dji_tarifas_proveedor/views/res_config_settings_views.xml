@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_tarifas" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.tarifas.proveedor</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="purchase.res_config_settings_view_form_purchase"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='purchase']" position="inside">
+                <block title="Tarifas de proveedores" name="tarifas_proveedor_container">
+                    <setting id="tarifas_proveedor_conexion" string="Conexión con la app de Tarifas"
+                             help="Compara los precios de los pedidos de compra con la tarifa vigente del proveedor">
+                        <div class="content-group">
+                            <div class="row mt8">
+                                <label for="tarifas_supabase_url" class="col-lg-4 o_light_label"/>
+                                <field name="tarifas_supabase_url" placeholder="https://xxxx.supabase.co"/>
+                            </div>
+                            <div class="row">
+                                <label for="tarifas_supabase_key" class="col-lg-4 o_light_label"/>
+                                <field name="tarifas_supabase_key" password="True"/>
+                            </div>
+                            <div class="row">
+                                <label for="tarifas_empresa" class="col-lg-4 o_light_label"/>
+                                <field name="tarifas_empresa"/>
+                            </div>
+                            <div class="row">
+                                <label for="tarifas_tolerancia" class="col-lg-4 o_light_label"/>
+                                <field name="tarifas_tolerancia"/>
+                            </div>
+                            <button name="action_probar_tarifas" type="object" string="Probar conexión" class="btn-link" icon="fa-plug"/>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

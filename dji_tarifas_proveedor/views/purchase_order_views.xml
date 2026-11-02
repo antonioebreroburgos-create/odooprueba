@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_order_form_tarifas" model="ir.ui.view">
+        <field name="name">purchase.order.form.tarifas.proveedor</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <!-- Botones en la cabecera -->
+            <xpath expr="//header" position="inside">
+                <button name="action_comprobar_tarifa" type="object" string="Comprobar tarifa"
+                        invisible="state in ('cancel',)" icon="fa-check-square-o"/>
+                <button name="action_aplicar_precios_tarifa" type="object" string="Aplicar precios de tarifa"
+                        invisible="state not in ('draft', 'sent') or not x_tarifa_hay_distintos"
+                        confirm="Se cambiará el precio de las líneas con precio distinto por el de la tarifa. ¿Continuar?"/>
+            </xpath>
+            <!-- Aviso con el resultado de la comprobación -->
+            <xpath expr="//sheet" position="before">
+                <field name="x_tarifa_nombre" invisible="1"/>
+                <field name="x_tarifa_hay_distintos" invisible="1"/>
+                <div class="alert alert-warning mb-0" role="alert" invisible="not x_tarifa_resumen or not x_tarifa_hay_distintos">
+                    <i class="fa fa-exclamation-triangle me-1" title="Aviso"/><field name="x_tarifa_resumen" class="d-inline"/>
+                </div>
+                <div class="alert alert-info mb-0" role="alert" invisible="not x_tarifa_resumen or x_tarifa_hay_distintos">
+                    <i class="fa fa-info-circle me-1" title="Información"/><field name="x_tarifa_resumen" class="d-inline"/>
+                </div>
+            </xpath>
+            <!-- Columnas en las líneas -->
+            <xpath expr="//field[@name='order_line']/list" position="attributes">
+                <attribute name="decoration-danger">x_tarifa_estado == 'distinto'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_unit']" position="after">
+                <field name="x_tarifa_precio" optional="show" readonly="1" force_save="1"
+                       invisible="not x_tarifa_precio"/>
+                <field name="x_tarifa_dif" optional="show" readonly="1" force_save="1"
+                       invisible="x_tarifa_estado not in ('ok', 'distinto')"/>
+                <field name="x_tarifa_estado" optional="show" readonly="1" force_save="1" widget="badge"
+                       decoration-success="x_tarifa_estado == 'ok'"
+                       decoration-danger="x_tarifa_estado == 'distinto'"
+                       decoration-muted="x_tarifa_estado in ('sin_articulo', 'sin_precio')"/>
+                <field name="x_tarifa_info" optional="hide" readonly="1" force_save="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
