@@ -145,7 +145,10 @@ class TarifasProveedorServicio(models.AbstractModel):
         if not candidatos:
             return None, None
 
-        # Si la unidad de la línea lo deja claro, se usa ese precio
+        # Si la unidad de la línea lo deja claro (Caja, kg, litro), se usa ese precio.
+        # "Unidades" NO se fuerza: en Odoo muchos artículos se compran en "Unidades"
+        # aunque cada unidad sea una caja (p. ej. "30Und/Caja"); en ese caso se usa
+        # el precio de tarifa más cercano (unidad, caja o kg).
         nombre = normalizar(uom.name if uom else '')
         if re.search(r'\b(caja|cajas|cj|bulto|bultos|pack|paquete)\b', nombre):
             preferida = 'caja'
@@ -153,8 +156,6 @@ class TarifasProveedorServicio(models.AbstractModel):
             preferida = 'kg'
         elif re.search(r'\b(l|lt|litro|litros)\b', nombre):
             preferida = 'litro'
-        elif re.search(r'\b(ud|uds|unidad|unidades|unit|units)\b', nombre):
-            preferida = 'unidad'
         else:
             preferida = None
         elegidos = [c for c in candidatos if c[0] == preferida]

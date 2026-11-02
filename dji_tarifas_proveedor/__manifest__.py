@@ -7,7 +7,7 @@ Al meter artículos en un pedido de compra, compara el precio con la tarifa vige
 También añade un botón para comprobar todo el pedido y otro para aplicar los precios de tarifa.
 Al confirmar el pedido deja una nota en el historial si hay diferencias. No bloquea nada.
 """,
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Inventory/Purchase',
     'author': 'DJI',
     'license': 'LGPL-3',
