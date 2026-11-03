@@ -1,7 +1,7 @@
 {
     "name": "DJI Registro de Entrega",
     "summary": "Fotos de carga y entrega con análisis IA vinculadas al albarán",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "author": "DJI",
     "company": "Distribuciones Joaquín Infante",
     "category": "Inventory",

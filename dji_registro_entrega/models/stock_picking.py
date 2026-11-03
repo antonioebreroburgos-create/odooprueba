@@ -75,3 +75,34 @@ class StockPicking(models.Model):
             else:
                 picking.dji_ia_estado = "pendiente"
                 picking.dji_ia_resumen = False
+
+    def action_confirm(self):
+        """Al confirmar el picking, vincula las fotos huérfanas del pedido."""
+        res = super().action_confirm()
+        self._link_orphan_fotos()
+        return res
+
+    def _link_orphan_fotos(self):
+        """
+        Busca fotos de dji.picking.foto que estén vinculadas al pedido de venta
+        de este picking (por sale_id) pero aún no tengan picking_id asignado,
+        y las vincula a este picking.
+
+        Se llama automáticamente al confirmar el picking.
+        """
+        FotoModel = self.env["dji.picking.foto"]
+        for picking in self:
+            if not picking.sale_id:
+                continue
+            # Solo pickings de salida (entrega al cliente)
+            if picking.picking_type_code != "outgoing":
+                continue
+            fotos_huerfanas = FotoModel.search([
+                ("sale_id", "=", picking.sale_id.id),
+                ("picking_id", "=", False),
+            ])
+            if fotos_huerfanas:
+                fotos_huerfanas.write({
+                    "picking_id": picking.id,
+                    # Dejamos sale_id para trazabilidad
+                })

@@ -9,8 +9,18 @@ class DjiPickingFoto(models.Model):
     picking_id = fields.Many2one(
         "stock.picking",
         string="Albarán",
-        required=True,
+        required=False,
         ondelete="cascade",
+    )
+    # Campo opcional: pedido de venta. Se rellena cuando la foto se sube
+    # antes de que exista el albarán (presupuesto aún no confirmado).
+    # Al confirmar el pedido y crear el picking, _link_orphan_fotos()
+    # en stock.picking copia picking_id y limpia sale_id.
+    sale_id = fields.Many2one(
+        "sale.order",
+        string="Pedido de venta",
+        required=False,
+        ondelete="set null",
     )
     tipo = fields.Selection(
         [("carga", "Carga (almacén)"), ("entrega", "Entrega (cliente)")],
