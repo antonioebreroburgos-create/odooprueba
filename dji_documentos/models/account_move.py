@@ -235,15 +235,31 @@ class AccountMove(models.Model):
         lista_grupos = []
         hay_albaranes = any(grupos[c]['albaranes'] for c in orden)
         # Dirección de entrega / establecimiento de la factura
-        entregas = self.env['res.partner']
+        # Antes se comparaban los contactos de los albaranes por id: si unos albaranes iban al
+        # cliente (empresa) y otros a su local, o había direcciones duplicadas, salía "Varios"
+        # aunque todo fuera al mismo establecimiento. Ahora se cuentan LOCALES distintos (por
+        # nombre del establecimiento); los albaranes hechos a la empresa sin local no cuentan.
+        envio = self.partner_shipping_id if 'partner_shipping_id' in self._fields and self.partner_shipping_id else self.env['res.partner']
+        contactos_alb = self.env['res.partner']
         for c in orden:
-            entregas |= grupos[c]['albaranes'].partner_id
-        if 'partner_shipping_id' in self._fields and self.partner_shipping_id:
-            entregas = entregas or self.partner_shipping_id
-        varias_entregas = len(entregas) > 1
-        entrega = self.partner_shipping_id if 'partner_shipping_id' in self._fields and self.partner_shipping_id else entregas[:1]
+            contactos_alb |= grupos[c]['albaranes'].partner_id
+        por_local = {}
+        for contacto in contactos_alb:
+            nombre_local = _establecimiento(contacto)
+            if nombre_local:
+                por_local.setdefault(nombre_local.upper(), contacto)
+        locales_distintos = sorted(por_local)
+        varias_entregas = len(locales_distintos) > 1
         if varias_entregas:
             entrega = self.env['res.partner']
+        elif locales_distintos:
+            unico = por_local[locales_distintos[0]]
+            # Si la dirección de entrega de la factura es ese mismo local, se usa la de la factura
+            entrega = envio if envio and _establecimiento(envio).upper() == locales_distintos[0] else unico
+        else:
+            # Sin albaranes con local: la "Dirección de entrega" de la factura (si la hay)
+            entrega = envio or contactos_alb[:1]
+        locales_varios = [_establecimiento(por_local[k]) for k in locales_distintos] if varias_entregas else []
 
         def _orden_grupo(c):
             fechas = [d for d in grupos[c]['albaranes'].mapped('date_done') if d]
@@ -307,6 +323,7 @@ class AccountMove(models.Model):
                 'direccion': _linea_direccion(entrega),
             } if entrega and (entrega != direccion or _establecimiento(entrega)) else False,
             'varias_entregas': varias_entregas,
+            'locales_varios': locales_varios,
             'cod_cliente': cliente.ref or '',
             'comercial': self.invoice_user_id.name or '',
             'forma_pago': forma_pago,

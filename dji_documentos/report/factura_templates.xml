@@ -98,7 +98,8 @@
                             </div>
                             <div t-elif="d['varias_entregas']" class="entrega-fac">
                                 <div class="etq-doc">Establecimiento / entrega</div>
-                                <div class="gris">Varios: se indica en cada albarán</div>
+                                <div class="entrega-local" t-if="d['locales_varios'] and len(d['locales_varios']) &lt;= 4" t-out="', '.join(d['locales_varios'])"/>
+                                <div class="gris">Varios locales: se indica en cada albarán</div>
                             </div>
                         </td>
                         <td class="fac-info">
