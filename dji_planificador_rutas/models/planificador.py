@@ -202,8 +202,8 @@ class DjiPlanificadorRutas(models.TransientModel):
                 1 for o in candidates
                 if not any(_norm(t.name) in TAGS_EXCLUIR for t in o.so_tag_ids)
             )
-            if count > 0:
-                result.append({'id': r.id, 'name': r.name, 'count': count})
+            # Siempre incluir la ruta aunque no tenga presupuestos asignados
+            result.append({'id': r.id, 'name': r.name, 'count': count})
         return result
 
     @api.model
