@@ -138,11 +138,15 @@ class PurchaseOrder(models.Model):
                 _('📲 Pedido enviado por WhatsApp al proveedor (%s) con el PDF. Pendiente de que confirme la recepción.', telefono))
 
     def button_approve(self, force=False):
-        antes = {o.id: o.state for o in self}
+        """Confirma el pedido SIN enviar WhatsApp al proveedor."""
+        return super().button_approve(force=force)
+
+    def button_approve_y_whatsapp(self, force=False):
+        """Confirma el pedido Y envía WhatsApp al proveedor."""
         res = super().button_approve(force=force)
-        nuevos = self.filtered(lambda o: o.state == 'purchase' and antes.get(o.id) != 'purchase')
-        if nuevos and not self.env.context.get('dji_sin_aviso_whatsapp'):
-            nuevos._dji_enviar_aviso()
+        confirmados = self.filtered(lambda o: o.state == 'purchase')
+        if confirmados:
+            confirmados._dji_enviar_aviso()
         return res
 
     def action_dji_reenviar_aviso(self):
@@ -223,13 +227,9 @@ class PurchaseOrder(models.Model):
             return
         usuario = autor and autor.with_context(active_test=False).user_ids.filtered(lambda u: not u.share)[:1]
         if usuario:
-            # Un compañero escribe en el pedido (mensaje o nota): se avisa al
-            # comprador, salvo que lo haya escrito él mismo.
             extra = f' (+{adjuntos} adjunto{"s" if adjuntos > 1 else ""})' if adjuntos else ''
             self._dji_seguimiento(f'💬 «{texto or "sin texto"}»{extra}', usuario=usuario)
             return
-        # Escribe alguien de fuera (el proveedor, normalmente por correo).
-        # Las notas internas no cuentan; los correos que entran, siempre.
         if message.message_type == 'comment' and (message.subtype_id.internal or message.is_internal):
             return
         if self.state not in ('sent', 'to approve', 'purchase', 'done'):

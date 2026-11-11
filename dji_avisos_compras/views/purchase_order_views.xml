@@ -6,7 +6,15 @@
         <field name="inherit_id" ref="purchase.purchase_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <button name="action_dji_reenviar_aviso" type="object" string="Reenviar WhatsApp al proveedor"
+                <!-- Confirmar pedido y enviar WhatsApp al proveedor (visible antes de confirmar) -->
+                <button name="button_approve_y_whatsapp" type="object"
+                        string="Confirmar y avisar proveedor (WhatsApp)"
+                        icon="fa-whatsapp" class="btn-primary"
+                        invisible="state not in ('draft', 'sent', 'to approve')"
+                        confirm="Se confirmará el pedido y se enviará el PDF por WhatsApp al proveedor para que confirme la recepción. ¿Continuar?"/>
+                <!-- Reenviar WhatsApp una vez ya confirmado -->
+                <button name="action_dji_reenviar_aviso" type="object"
+                        string="Reenviar WhatsApp al proveedor"
                         icon="fa-whatsapp" class="btn-secondary"
                         invisible="state not in ('purchase', 'done')"
                         confirm="Se volverá a mandar el pedido en PDF por WhatsApp al proveedor. ¿Continuar?"/>
