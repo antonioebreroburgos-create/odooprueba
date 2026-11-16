@@ -556,9 +556,25 @@ class SaleOrder(models.Model):
         return picking
 
     def _dev_validar_albaran(self, picking, descripcion):
-        picking.with_context(
-            skip_backorder=True, picking_ids_not_to_backorder=picking.ids, skip_sms=True,
-        ).button_validate()
+        ctx = dict(
+            skip_backorder=True,
+            picking_ids_not_to_backorder=picking.ids,
+            skip_sms=True,
+        )
+        res = picking.with_context(**ctx).button_validate()
+        # En Odoo 19, button_validate() puede devolver un wizard de confirmación
+        # inmediata (stock.immediate.transfer) o de backorder en lugar de validar
+        # directamente. Lo procesamos automáticamente.
+        if isinstance(res, dict) and res.get('res_model'):
+            modelo = res['res_model']
+            if modelo == 'stock.immediate.transfer':
+                self.env['stock.immediate.transfer'].with_context(**ctx).create(
+                    {'pick_ids': [(4, picking.id)]}
+                ).process()
+            elif modelo == 'stock.backorder.confirmation':
+                self.env['stock.backorder.confirmation'].with_context(
+                    **ctx, button_validate_picking_ids=picking.ids
+                ).create({'pick_ids': [(4, picking.id)]}).process()
         if picking.state != 'done':
             raise UserError(_("No se ha podido validar automáticamente %(desc)s (%(alb)s).",
                               desc=descripcion, alb=picking.name))
