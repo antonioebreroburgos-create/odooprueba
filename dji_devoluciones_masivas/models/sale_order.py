@@ -559,25 +559,26 @@ class SaleOrder(models.Model):
         return picking
 
     def _dev_validar_albaran(self, picking, descripcion):
+        # Nos aseguramos de que todos los movimientos tienen qty_done informada
+        # antes de validar, para evitar que Odoo abra el wizard de transferencia
+        # inmediata (stock.immediate.transfer).
+        for move in picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel')):
+            if not move.quantity:
+                move.quantity = move.product_uom_qty
+            move.picked = True
+
+        # Usamos _action_done() directamente sobre los movimientos: es la API
+        # interna de Odoo que valida sin pasar por wizards de UI (immediate
+        # transfer, backorder, etc.). Pasamos skip_backorder en contexto para
+        # evitar la creación de backorders.
         ctx = dict(
             skip_backorder=True,
             picking_ids_not_to_backorder=picking.ids,
             skip_sms=True,
         )
-        res = picking.with_context(**ctx).button_validate()
-        # En Odoo 19, button_validate() puede devolver un wizard de confirmación
-        # inmediata (stock.immediate.transfer) o de backorder en lugar de validar
-        # directamente. Lo procesamos automáticamente.
-        if isinstance(res, dict) and res.get('res_model'):
-            modelo = res['res_model']
-            if modelo == 'stock.immediate.transfer':
-                self.env['stock.immediate.transfer'].with_context(**ctx).create(
-                    {'pick_ids': [(4, picking.id)]}
-                ).process()
-            elif modelo == 'stock.backorder.confirmation':
-                self.env['stock.backorder.confirmation'].with_context(
-                    **ctx, button_validate_picking_ids=picking.ids
-                ).create({'pick_ids': [(4, picking.id)]}).process()
+        moves_to_do = picking.move_ids.filtered(lambda m: m.state not in ('done', 'cancel'))
+        moves_to_do.with_context(**ctx)._action_done()
+
         if picking.state != 'done':
             raise UserError(_("No se ha podido validar automáticamente %(desc)s (%(alb)s).",
                               desc=descripcion, alb=picking.name))
