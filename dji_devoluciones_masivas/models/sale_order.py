@@ -531,6 +531,9 @@ class SaleOrder(models.Model):
                 'location_dest_id': loc_dest.id,
                 'picking_type_id': ptype.id,
                 'company_id': self.company_id.id,
+                # Usamos el coste estándar del producto para que Odoo no altere
+                # la valoración de stock con el precio de venta/abono.
+                'price_unit': f.product_id.standard_price,
             })
             pares.append((move, f))
         picking.action_confirm()
@@ -635,6 +638,11 @@ class SaleOrder(models.Model):
             raise UserError(_("No se han encontrado todas las líneas a devolver en el albarán %s.", picking.name))
 
         devolucion = wizard._create_return()
+        # Corregimos el price_unit de cada movimiento de devolución al coste
+        # estándar del producto, para que Odoo no recalcule el coste usando
+        # el precio de venta del movimiento original de salida.
+        for move in devolucion.move_ids:
+            move.price_unit = move.product_id.standard_price
         MoveLine = self.env['stock.move.line']
         for move in devolucion.move_ids:
             origen = move.origin_returned_move_id
