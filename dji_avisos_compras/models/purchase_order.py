@@ -143,7 +143,9 @@ class PurchaseOrder(models.Model):
 
     def button_approve_y_whatsapp(self, force=False):
         """Confirma el pedido Y envía WhatsApp al proveedor."""
-        res = super().button_approve(force=force)
+        # Usamos button_confirm para el flujo normal (crea el albarán de recepción).
+        # button_approve solo se usa cuando el pedido requiere aprobación por importe.
+        res = self.button_confirm()
         confirmados = self.filtered(lambda o: o.state == 'purchase')
         if confirmados:
             confirmados._dji_enviar_aviso()
