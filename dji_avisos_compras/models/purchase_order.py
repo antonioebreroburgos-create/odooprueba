@@ -153,6 +153,23 @@ class PurchaseOrder(models.Model):
         self.filtered(lambda o: o.state in ('purchase', 'done'))._dji_enviar_aviso()
         return True
 
+    def action_dji_crear_recepcion(self):
+        """Regenera el albarán de recepción cuando el pedido está confirmado pero
+        no tiene ninguna recepción pendiente (picking en estado ready o waiting)."""
+        self.ensure_one()
+        if self.state != 'purchase':
+            raise UserError(_('Solo se puede crear la recepción en un pedido confirmado.'))
+        pendientes = self.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        if pendientes:
+            raise UserError(_('El pedido ya tiene una recepción pendiente: %s', ', '.join(pendientes.mapped('name'))))
+        # _create_picking() es el método interno de Odoo que genera el albarán
+        # de entrada a partir de las líneas del pedido.
+        self._create_picking()
+        nuevas = self.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+        if not nuevas:
+            raise UserError(_('No se ha podido crear la recepción. Comprueba que el pedido tiene líneas de producto almacenable.'))
+        self.message_post(body=_('📦 Recepción %s creada manualmente (el albarán original faltaba).', ', '.join(nuevas.mapped('name'))))
+
     @api.model
     def _dji_cron_recordatorios(self):
         ahora = fields.Datetime.now()

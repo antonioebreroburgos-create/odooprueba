@@ -18,6 +18,12 @@
                         icon="fa-whatsapp" class="btn-secondary"
                         invisible="state not in ('purchase', 'done')"
                         confirm="Se volverá a mandar el pedido en PDF por WhatsApp al proveedor. ¿Continuar?"/>
+                <!-- Crear recepción cuando falta el albarán de entrada -->
+                <button name="action_dji_crear_recepcion" type="object"
+                        string="Crear recepción"
+                        icon="fa-inbox" class="btn-secondary"
+                        invisible="state != 'purchase' or picking_ids != []"
+                        confirm="Se creará un nuevo albarán de recepción para este pedido. ¿Continuar?"/>
             </xpath>
             <xpath expr="//field[@name='partner_ref']" position="after">
                 <field name="dji_aviso_estado" widget="badge" readonly="1"
